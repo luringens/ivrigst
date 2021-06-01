@@ -1,0 +1,7 @@
+{
+    "rust-analyzer.updates.channel": "nightly",
+    "rust-analyzer.procMacro.enable": false,
+    "rust-analyzer.diagnostics.disabled": [
+        "unresolved-proc-macro"
+    ],
+}
