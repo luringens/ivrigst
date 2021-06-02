@@ -5,7 +5,7 @@ use bevy::{
         pipeline::{PipelineDescriptor, RenderPipeline},
         render_graph::{base, AssetRenderResourcesNode, RenderGraph},
         renderer::RenderResources,
-        shader::{ShaderStage, ShaderStages},
+        shader::ShaderStages,
     },
 };
 
@@ -36,21 +36,21 @@ struct MyMaterial {
     pub color: Color,
 }
 
-const VERTEX_SHADER: &'static str = include_str!("./vertex.glsl");
-const FRAGMENT_SHADER: &'static str = include_str!("./fragment.glsl");
-
 fn setup(
     mut commands: Commands,
     mut pipelines: ResMut<Assets<PipelineDescriptor>>,
-    mut shaders: ResMut<Assets<Shader>>,
     mut materials: ResMut<Assets<MyMaterial>>,
     mut render_graph: ResMut<RenderGraph>,
     asset_server: Res<AssetServer>,
 ) {
+    asset_server
+        .watch_for_changes()
+        .expect("Failed to watch for changes");
+
     // Create a new shader pipeline
     let pipeline_handle = pipelines.add(PipelineDescriptor::default_config(ShaderStages {
-        vertex: shaders.add(Shader::from_glsl(ShaderStage::Vertex, VERTEX_SHADER)),
-        fragment: Some(shaders.add(Shader::from_glsl(ShaderStage::Fragment, FRAGMENT_SHADER))),
+        vertex: asset_server.load::<Shader, _>("shader.vert"),
+        fragment: Some(asset_server.load::<Shader, _>("shader.frag")),
     }));
 
     // Add an AssetRenderResourcesNode to our Render Graph. This will bind MyMaterial resources to
@@ -82,10 +82,13 @@ fn setup(
             ..Default::default()
         });
 
+    let transform_rot = Transform::from_rotation(Quat::from_rotation_x(std::f32::consts::PI));
+    let transform_mov = Transform::from_translation(Vec3::new(0.0, -390.0, 50.0));
+    let transform = transform_rot * transform_mov;
     commands
         .spawn_bundle(MeshBundle {
             mesh: asset_server.load(MODEL_PATH),
-            transform: Transform::from_translation(Vec3::new(0.0, -350.0, 50.0)),
+            transform,
             render_pipelines: RenderPipelines::from_pipelines(vec![RenderPipeline::new(
                 pipeline_handle,
             )]),
