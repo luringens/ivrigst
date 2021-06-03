@@ -1,15 +1,18 @@
+mod material;
+mod ui;
+
 use bevy::{
-    math::{vec2, vec3},
+    math::vec3,
     prelude::*,
-    reflect::TypeUuid,
     render::{
         pipeline::{PipelineDescriptor, RenderPipeline},
         render_graph::{base, AssetRenderResourcesNode, RenderGraph},
-        renderer::RenderResources,
         shader::ShaderStages,
     },
 };
-use bevy_egui::{egui, EguiContext, EguiPlugin};
+use bevy_egui::EguiPlugin;
+use material::*;
+use ui::*;
 
 const MODEL_PATH: &'static str = "model.obj";
 
@@ -30,23 +33,8 @@ fn main() {
         .add_asset::<MyMaterial>()
         .add_startup_system(setup.system())
         .add_system(ui.system())
+        .add_system(camera.system())
         .run();
-}
-
-#[derive(RenderResources, TypeUuid)]
-#[uuid = "0805ae06-bfbc-4e78-86bb-c1a4f143c6ad"]
-struct MyMaterial {
-    color: Vec3,
-    distance_shading: Vec2,
-}
-
-impl Default for MyMaterial {
-    fn default() -> Self {
-        Self {
-            color: vec3(0.2, 0.0, 0.5),
-            distance_shading: vec2(120.0, 170.0),
-        }
-    }
 }
 
 fn setup(
@@ -54,7 +42,7 @@ fn setup(
     mut pipelines: ResMut<Assets<PipelineDescriptor>>,
     mut materials: ResMut<Assets<MyMaterial>>,
     mut render_graph: ResMut<RenderGraph>,
-    // meshes: Res<Assets<Mesh>>,
+    meshes: ResMut<Assets<Mesh>>,
     asset_server: Res<AssetServer>,
 ) {
     asset_server
@@ -109,63 +97,28 @@ fn setup(
         })
         .insert(material);
 
-    // let mesh = meshes.get(mesh_handle.clone_weak());
-    // println!("{:?}", mesh.is_some());
-    // if let Some(mesh) = mesh {
-    //     let vertices = mesh.get_vertex_buffer_data();
-    //     let (mut xmin, mut ymin, mut zmin) = (u8::MAX, u8::MAX, u8::MAX);
-    //     let (mut xmax, mut ymax, mut zmax) = (u8::MIN, u8::MIN, u8::MIN);
+    let (_, mesh) = meshes.iter().next().expect("No mesh found");
+    let vertices = mesh.get_vertex_buffer_data();
 
-    //     let mut iterator = vertices.chunks_exact(3);
-    //     while let Some([x, y, z]) = iterator.next() {
-    //         xmin = xmin.min(*x);
-    //         ymin = ymin.min(*y);
-    //         zmin = zmin.min(*z);
-    //         xmax = xmax.max(*x);
-    //         ymax = ymax.max(*y);
-    //         zmax = zmax.max(*z);
-    //     }
+    let (mut xmin, mut ymin, mut zmin) = (u8::MAX, u8::MAX, u8::MAX);
+    let (mut xmax, mut ymax, mut zmax) = (u8::MIN, u8::MIN, u8::MIN);
 
-    //     let corner1 = vec3(xmin as f32, ymin as f32, zmin as f32);
-    //     let corner2 = vec3(xmax as f32, ymax as f32, zmax as f32);
-    //     let diagonal = corner1 - corner2;
-    //     let max_distance = diagonal.length();
-    //     println!("{}", max_distance);
-    // }
-}
+    let mut iterator = vertices.chunks_exact(3);
+    while let Some([x, y, z]) = iterator.next() {
+        xmin = xmin.min(*x);
+        ymin = ymin.min(*y);
+        zmin = zmin.min(*z);
+        xmax = xmax.max(*x);
+        ymax = ymax.max(*y);
+        zmax = zmax.max(*z);
+    }
 
-fn ui(
-    egui_context: ResMut<EguiContext>,
-    mut materials: ResMut<Assets<MyMaterial>>,
-    // meshes: Res<Assets<Mesh>>,
-    // mut render_graph: ResMut<RenderGraph>,
-    // asset_server: Res<AssetServer>,
-) {
+    let corner1 = vec3(xmin as f32, ymin as f32, zmin as f32);
+    let corner2 = vec3(xmax as f32, ymax as f32, zmax as f32);
+    let diagonal = corner1 - corner2;
+    let max_distance = diagonal.length();
+
     let (handle, _) = materials.iter().next().expect("No material found");
     let material = materials.get_mut(handle).expect("No material extracted");
-    let mut color = material.color.clone().into();
-    egui::Window::new("Settings").show(egui_context.ctx(), |ui| {
-        ui.horizontal(|ui| {
-            ui.label("Model base colour");
-            ui.color_edit_button_rgb(&mut color);
-            material.color.x = color[0];
-            material.color.y = color[1];
-            material.color.z = color[2];
-        });
-
-        ui.horizontal(|ui| {
-            ui.label("Distance shading min");
-            ui.add(egui::Slider::new(
-                &mut material.distance_shading.x,
-                0.0..=200.0,
-            ));
-        });
-        ui.horizontal(|ui| {
-            ui.label("Distance shading max");
-            ui.add(egui::Slider::new(
-                &mut material.distance_shading.y,
-                0.0..=200.0,
-            ));
-        });
-    });
+    material.set_model_size(max_distance);
 }
