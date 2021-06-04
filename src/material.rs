@@ -12,6 +12,7 @@ pub struct MyMaterial {
     color: Vec3,
     distance_shading: Vec2,
     model_size: f32,
+    distance_shading_power: f32,
 
     floats: Vec<f32>,
     vectors: Vec<f32>,
@@ -20,15 +21,17 @@ pub struct MyMaterial {
 impl Default for MyMaterial {
     fn default() -> Self {
         let mut material = Self {
+            distance_shading_power: f32::default(),
             model_size: f32::default(),
             camera_position: Vec3::default(),
             color: Vec3::default(),
             distance_shading: Vec2::default(),
             vectors: vec![f32::default(); 10],
-            floats: vec![f32::default(); 1],
+            floats: vec![f32::default(); 3],
         };
         material.set_color(vec3(1.0, 0.56, 0.72));
         material.set_distance_shading(vec2(120.0, 170.0));
+        material.set_distance_shading_power(0.8);
         material
     }
 }
@@ -58,11 +61,20 @@ impl MyMaterial {
         self.floats[0] = new;
     }
 
+    pub fn set_distance_shading_power(&mut self, new: f32) {
+        self.distance_shading_power = new;
+        self.floats[1] = new;
+    }
+
     pub fn get_color(&self) -> Vec3 {
         self.color
     }
 
     pub fn get_distance_shading(&self) -> Vec2 {
         self.distance_shading
+    }
+
+    pub fn get_distance_shading_power(&self) -> f32 {
+        self.distance_shading_power
     }
 }

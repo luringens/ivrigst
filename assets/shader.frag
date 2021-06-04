@@ -9,6 +9,7 @@ layout(set = 2, binding = 0) uniform MyMaterial_vectors {
 };
 layout(set = 3, binding = 0) uniform MyMaterial_floats {
     float model_size;
+    float distance_shading_power;
 };
 
 layout(location = 0) in vec3 n;
@@ -16,7 +17,7 @@ layout(location = 1) in vec3 l;
 
 void main() {
     float z = abs(gl_FragCoord.z / gl_FragCoord.w / 1);
-    float d = 1.0 - min(smoothstep(distance_shading.x, distance_shading.y, z), 0.8);
+    float d = 1.0 - min(smoothstep(distance_shading.x, distance_shading.y, z), distance_shading_power);
     
     vec3 cl = color * d;
     vec3 light = -normalize(l.xyz);

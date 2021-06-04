@@ -20,6 +20,7 @@ pub fn ui(egui_context: ResMut<EguiContext>, mut materials: ResMut<Assets<MyMate
         // Distance shading parameters widget.
         ui.vertical(|ui| {
             let mut distance_shading = material.get_distance_shading();
+            let mut distance_shading_power = material.get_distance_shading_power();
             ui.horizontal(|ui| {
                 ui.label("Distance shading min");
                 ui.add(egui::Slider::new(&mut distance_shading.x, 0.0..=500.0));
@@ -28,7 +29,12 @@ pub fn ui(egui_context: ResMut<EguiContext>, mut materials: ResMut<Assets<MyMate
                 ui.label("Distance shading max");
                 ui.add(egui::Slider::new(&mut distance_shading.y, 0.0..=500.0));
             });
+            ui.horizontal(|ui| {
+                ui.label("Distance shading power");
+                ui.add(egui::Slider::new(&mut distance_shading_power, 0.0..=1.0));
+            });
             material.set_distance_shading(distance_shading);
+            material.set_distance_shading_power(distance_shading_power);
         });
     });
 }
