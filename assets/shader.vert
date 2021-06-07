@@ -12,12 +12,12 @@ layout(set = 1, binding = 0) uniform Transform {
 };
 
 
-layout(location = 0) out vec3 n;
-layout(location = 1) out vec3 l;
+layout(location = 0) out vec3 normalVector;
+layout(location = 1) out vec3 lightVector;
 
 void main() {
-    n = normalize(Vertex_Normal);
-    l = vec3(ViewProj * Model * vec4(n,0));
+    normalVector = normalize(Vertex_Normal);
+    lightVector = vec3(ViewProj * Model * vec4(normalVector, 0.0));
     
     gl_Position = ViewProj * Model * vec4(Vertex_Position, 1.0);
 }

@@ -17,11 +17,16 @@ pub fn ui(egui_context: ResMut<EguiContext>, mut materials: ResMut<Assets<MyMate
             material.set_color(vec3(color[0], color[1], color[2]));
         });
 
+        // Toon shading enable/disable
+        let mut toon_shading = material.get_toon_shading();
+        ui.add(egui::Checkbox::new(&mut toon_shading, "Toon shading"));
+        material.set_toon_shading(toon_shading);
+
         // Distance shading parameters widget.
         ui.vertical(|ui| {
             use crate::material::DistanceShadingChannel as DSC;
-            let mut ds_dist = material.get_distance_shading();
             let mut ds_power = material.get_distance_shading_power();
+            let mut ds_constriction = material.get_distance_shading_constrict();
             let mut ds_channel = material.get_distance_shading_channel();
 
             egui::ComboBox::from_label("Distance shading channel")
@@ -38,19 +43,16 @@ pub fn ui(egui_context: ResMut<EguiContext>, mut materials: ResMut<Assets<MyMate
                 });
 
             ui.horizontal(|ui| {
-                ui.label("Distance shading min");
-                ui.add(egui::Slider::new(&mut ds_dist.x, 0.0..=500.0));
-            });
-            ui.horizontal(|ui| {
-                ui.label("Distance shading max");
-                ui.add(egui::Slider::new(&mut ds_dist.y, 0.0..=500.0));
+                ui.label("Distance shading constriction");
+                ui.add(egui::Slider::new(&mut ds_constriction, 0.0..=1.0));
             });
             ui.horizontal(|ui| {
                 ui.label("Distance shading power");
                 ui.add(egui::Slider::new(&mut ds_power, 0.0..=1.0));
             });
-            material.set_distance_shading(ds_dist);
+
             material.set_distance_shading_power(ds_power);
+            material.set_distance_shading_constrict(ds_constriction);
             if ds_channel != material.get_distance_shading_channel() {
                 material.set_distance_shading_channel(ds_channel);
             }

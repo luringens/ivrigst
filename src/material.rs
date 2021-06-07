@@ -1,5 +1,5 @@
 use bevy::{
-    math::{vec2, vec3},
+    math::vec3,
     prelude::*,
     reflect::TypeUuid,
     render::{renderer::RenderResources, shader::ShaderDefs},
@@ -10,9 +10,9 @@ use bevy::{
 pub struct MyMaterial {
     camera_position: Vec3,
     color: Vec3,
-    distance_shading: Vec2,
     model_size: f32,
     distance_shading_power: f32,
+    distance_shading_constrict: f32,
 
     #[render_resources(ignore)]
     #[shader_def]
@@ -25,6 +25,10 @@ pub struct MyMaterial {
     #[render_resources(ignore)]
     #[shader_def]
     distance_shading_channel_value: bool,
+
+    #[render_resources(ignore)]
+    #[shader_def]
+    toon_shading: bool,
 
     /// Carefully laid out by struct to match shader expectation.
     floats: Vec<f32>,
@@ -47,15 +51,15 @@ impl Default for MyMaterial {
             model_size: f32::default(),
             camera_position: Vec3::default(),
             color: Vec3::default(),
-            distance_shading: Vec2::default(),
-            vectors: vec![f32::default(); 10],
+            vectors: vec![f32::default(); 7],
             floats: vec![f32::default(); 3],
             distance_shading_channel_hue: false,
             distance_shading_channel_saturation: false,
             distance_shading_channel_value: true,
+            distance_shading_constrict: 0.20,
+            toon_shading: true,
         };
         material.set_color(vec3(1.0, 0.56, 0.72));
-        material.set_distance_shading(vec2(120.0, 170.0));
         material.set_distance_shading_power(0.8);
         material
     }
@@ -76,12 +80,6 @@ impl MyMaterial {
         self.vectors[6] = new.z;
     }
 
-    pub fn set_distance_shading(&mut self, new: Vec2) {
-        self.distance_shading = new;
-        self.vectors[8] = new.x;
-        self.vectors[9] = new.y;
-    }
-
     pub fn set_model_size(&mut self, new: f32) {
         self.floats[0] = new;
     }
@@ -89,6 +87,15 @@ impl MyMaterial {
     pub fn set_distance_shading_power(&mut self, new: f32) {
         self.distance_shading_power = new;
         self.floats[1] = new;
+    }
+
+    pub fn set_distance_shading_constrict(&mut self, new: f32) {
+        self.distance_shading_constrict = new;
+        self.floats[2] = new;
+    }
+
+    pub fn set_toon_shading(&mut self, new: bool) {
+        self.toon_shading = new;
     }
 
     pub fn set_distance_shading_channel(&mut self, channel: DistanceShadingChannel) {
@@ -107,12 +114,16 @@ impl MyMaterial {
         self.color
     }
 
-    pub fn get_distance_shading(&self) -> Vec2 {
-        self.distance_shading
-    }
-
     pub fn get_distance_shading_power(&self) -> f32 {
         self.distance_shading_power
+    }
+
+    pub fn get_distance_shading_constrict(&self) -> f32 {
+        self.distance_shading_constrict
+    }
+
+    pub fn get_toon_shading(&self) -> bool {
+        self.toon_shading
     }
 
     pub fn get_distance_shading_channel(&self) -> DistanceShadingChannel {

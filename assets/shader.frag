@@ -5,20 +5,19 @@ layout(location = 0) out vec4 o_Target;
 layout(set = 2, binding = 0) uniform MyMaterial_vectors {
     vec3 camera_position;
     vec3 color;
-    vec2 distance_shading;
 };
 layout(set = 3, binding = 0) uniform MyMaterial_floats {
     float model_size;
     float distance_shading_power;
-    float distance_shading_channel;
+    float distance_shading_constrict;
 };
 // layout(set = 4, binding = 0) uniform colorscheme {
 //     sampler2D colorscheme;
 // };
 // layout(set = 3, binding = 1) uniform sampler color_scheme_sampler;
 
-layout(location = 0) in vec3 n;
-layout(location = 1) in vec3 l;
+layout(location = 0) in vec3 normalVector;
+layout(location = 1) in vec3 lightVector;
 
 // https://stackoverflow.com/a/17897228
 // All components are in the range [0…1], including hue.
@@ -43,24 +42,60 @@ vec3 hsv2rgb(vec3 c)
 
 
 void main() {
-    vec3 cl = color;
-    vec3 light = -normalize(l.xyz);
-    
+    vec3 color = color;
+# ifdef MYMATERIAL_TOON_SHADING
+    vec3 cl = color;    
+    vec3 light = -normalize(lightVector.xyz);    
     float vdn = light.z;
     cl = round(vdn * 5) / 5 * cl;
-    vec3 color = cl*vdn;
+    color = cl*vdn;
     if (vdn < 0.3)
     {
         color = vec3(0);
     }
+# else
+    float ambientReflection = 0.3;
+    float ambientIntensity = 1;
 
-    // Reduce Value of colour based on distance from camera.
+    float diffuseReflection = 0.3;
+    float diffuseIntensity = 1;
+
+    float specularReflection = 0.5;
+    float specularIntensity = 1;
+
+    float shininess = 5;
+
+    // Vector to camera
+    vec3 pos = vec3(0);
+    vec3 v = normalize(camera_position - pos);
+
+    // Vector to light source
+    vec3 light_position = camera_position;
+    vec3 lm = normalize(light_position - pos);
+
+    // Reflected light vector
+    vec3 np = 2 * normalize(dot(lm, normalVector) * normalVector);
+    vec3 rm = normalize(np - lm);
+
+    // Light intensity
+    float ip = ambientReflection * ambientIntensity + (diffuseReflection * diffuseIntensity * dot(lm, normalVector) + specularReflection * specularIntensity * pow(max(0, min(1, dot(rm, v))), shininess));
+
+    color = ip * color.xyz;
+# endif
+
+    // Reduce Value of colour based on distance from camera.    
+    float camera_dist = length(camera_position);
+    float near_plane = camera_dist - model_size / 2.0 * distance_shading_constrict;
+    float far_plane = camera_dist + model_size / 2.0 * distance_shading_constrict;
+
+    // Calculate magnitude of shading.
     float z = abs(gl_FragCoord.z / gl_FragCoord.w / 1);
-    float d = 1.0 - min(smoothstep(distance_shading.x, distance_shading.y, z), distance_shading_power);
+    float d = 1.0 - min(smoothstep(near_plane, far_plane, z), distance_shading_power);
     color = rgb2hsv(color);
-    // Reduce value
+
+    // Perform shading on channel of choice.
 # ifdef MYMATERIAL_DISTANCE_SHADING_CHANNEL_HUE
-    color.x *= d;
+    color.x = d;
 # endif
 # ifdef MYMATERIAL_DISTANCE_SHADING_CHANNEL_SATURATION
     color.y *= d;
