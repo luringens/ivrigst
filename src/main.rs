@@ -7,14 +7,14 @@ use bevy::{
     render::{
         pipeline::{PipelineDescriptor, RenderPipeline},
         render_graph::{base, AssetRenderResourcesNode, RenderGraph},
-        shader::ShaderStages,
+        shader::{asset_shader_defs_system, ShaderStages},
     },
 };
 use bevy_egui::EguiPlugin;
 use material::*;
 use ui::*;
 
-const MODEL_PATH: &'static str = "model.obj";
+const MODEL_PATH: &str = "model.obj";
 
 fn main() {
     color_backtrace::install();
@@ -34,6 +34,10 @@ fn main() {
         .add_startup_system(setup.system())
         .add_system(ui.system())
         .add_system(camera.system())
+        .add_system_to_stage(
+            CoreStage::PostUpdate,
+            asset_shader_defs_system::<MyMaterial>.system(),
+        )
         .run();
 }
 
