@@ -13,6 +13,7 @@ pub struct MyMaterial {
     model_size: f32,
     distance_shading_power: f32,
     distance_shading_constrict: f32,
+    toon_factor: f32,
 
     #[render_resources(ignore)]
     #[shader_def]
@@ -25,10 +26,6 @@ pub struct MyMaterial {
     #[render_resources(ignore)]
     #[shader_def]
     distance_shading_channel_value: bool,
-
-    #[render_resources(ignore)]
-    #[shader_def]
-    toon_shading: bool,
 
     /// Carefully laid out by struct to match shader expectation.
     floats: Vec<f32>,
@@ -52,12 +49,12 @@ impl Default for MyMaterial {
             camera_position: Vec3::default(),
             color: Vec3::default(),
             vectors: vec![f32::default(); 7],
-            floats: vec![f32::default(); 3],
+            floats: vec![f32::default(); 4],
             distance_shading_channel_hue: false,
             distance_shading_channel_saturation: false,
             distance_shading_channel_value: true,
             distance_shading_constrict: 0.20,
-            toon_shading: true,
+            toon_factor: 0.8,
         };
         material.set_color(vec3(1.0, 0.56, 0.72));
         material.set_distance_shading_power(0.8);
@@ -94,8 +91,9 @@ impl MyMaterial {
         self.floats[2] = new;
     }
 
-    pub fn set_toon_shading(&mut self, new: bool) {
-        self.toon_shading = new;
+    pub fn set_toon_factor(&mut self, new: f32) {
+        self.toon_factor = new;
+        self.floats[3] = new;
     }
 
     pub fn set_distance_shading_channel(&mut self, channel: DistanceShadingChannel) {
@@ -122,8 +120,8 @@ impl MyMaterial {
         self.distance_shading_constrict
     }
 
-    pub fn get_toon_shading(&self) -> bool {
-        self.toon_shading
+    pub fn get_toon_factor(&self) -> f32 {
+        self.toon_factor
     }
 
     pub fn get_distance_shading_channel(&self) -> DistanceShadingChannel {

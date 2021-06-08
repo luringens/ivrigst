@@ -14,10 +14,12 @@ layout(set = 1, binding = 0) uniform Transform {
 
 layout(location = 0) out vec3 normalVector;
 layout(location = 1) out vec3 lightVector;
+layout(location = 2) out vec3 positionVector;
 
 void main() {
     normalVector = normalize(Vertex_Normal);
     lightVector = vec3(ViewProj * Model * vec4(normalVector, 0.0));
+    positionVector = Vertex_Position;
     
     gl_Position = ViewProj * Model * vec4(Vertex_Position, 1.0);
 }

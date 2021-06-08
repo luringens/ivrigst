@@ -18,9 +18,12 @@ pub fn ui(egui_context: ResMut<EguiContext>, mut materials: ResMut<Assets<MyMate
         });
 
         // Toon shading enable/disable
-        let mut toon_shading = material.get_toon_shading();
-        ui.add(egui::Checkbox::new(&mut toon_shading, "Toon shading"));
-        material.set_toon_shading(toon_shading);
+        ui.horizontal(|ui| {
+            let mut toon_shading = material.get_toon_factor();
+            ui.label("Toon shading factor");
+            ui.add(egui::Slider::new(&mut toon_shading, 0.0..=1.0));
+            material.set_toon_factor(toon_shading);
+        });
 
         // Distance shading parameters widget.
         ui.vertical(|ui| {
