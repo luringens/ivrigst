@@ -8,8 +8,5 @@ resolver = "2"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = { version = "0.5.0", features = ["dynamic"] }
-bevy-orbit-controls = "2.0"
-bevy_obj = "0.5"
-color-backtrace = "0.5"
-bevy_egui = "0.5"
+gl = "0.14.0"
+sdl2 = { version = "0.34.5", features = ["bundled", "static-link"] }

@@ -1,128 +1,54 @@
-mod material;
-mod ui;
+mod render_gl;
 
-use bevy::{
-    math::vec3,
-    prelude::*,
-    render::{
-        pipeline::{PipelineDescriptor, RenderPipeline},
-        render_graph::{base, AssetRenderResourcesNode, RenderGraph},
-        shader::{asset_shader_defs_system, ShaderStages},
-    },
-};
-use bevy_egui::EguiPlugin;
-use material::*;
-use ui::*;
-
-const MODEL_PATH: &str = "model.obj";
+use std::ffi::{CStr, CString};
 
 fn main() {
-    color_backtrace::install();
-    App::build()
-        .insert_resource(Msaa { samples: 4 })
-        .insert_resource(WindowDescriptor {
-            title: "Medvis".to_string(),
-            width: 1920.,
-            height: 1080.,
-            ..Default::default()
-        })
-        .add_plugins(DefaultPlugins)
-        .add_plugin(bevy_obj::ObjPlugin)
-        .add_plugin(EguiPlugin)
-        .add_plugin(bevy_orbit_controls::OrbitCameraPlugin)
-        .add_asset::<MyMaterial>()
-        .add_startup_system(setup.system())
-        .add_system(ui.system())
-        .add_system(camera.system())
-        .add_system_to_stage(
-            CoreStage::PostUpdate,
-            asset_shader_defs_system::<MyMaterial>.system(),
-        )
-        .run();
-}
+    let sdl = sdl2::init().unwrap();
+    let video_subsystem = sdl.video().unwrap();
 
-fn setup(
-    mut commands: Commands,
-    mut pipelines: ResMut<Assets<PipelineDescriptor>>,
-    mut materials: ResMut<Assets<MyMaterial>>,
-    mut render_graph: ResMut<RenderGraph>,
-    meshes: ResMut<Assets<Mesh>>,
-    asset_server: Res<AssetServer>,
-) {
-    asset_server
-        .watch_for_changes()
-        .expect("Failed to watch for changes");
+    let gl_attr = video_subsystem.gl_attr();
+    gl_attr.set_context_profile(sdl2::video::GLProfile::Core);
+    gl_attr.set_context_version(4, 6);
 
-    // Create a new shader pipeline
-    let pipeline_handle = pipelines.add(PipelineDescriptor::default_config(ShaderStages {
-        vertex: asset_server.load::<Shader, _>("shader.vert"),
-        fragment: Some(asset_server.load::<Shader, _>("shader.frag")),
-    }));
-
-    // Add an AssetRenderResourcesNode to our Render Graph. This will bind MyMaterial resources to
-    // our shader
-    render_graph.add_system_node(
-        "my_material",
-        AssetRenderResourcesNode::<MyMaterial>::new(true),
-    );
-
-    // Add a Render Graph edge connecting our new "my_material" node to the main pass node. This
-    // ensures "my_material" runs before the main pass
-    render_graph
-        .add_node_edge("my_material", base::node::MAIN_PASS)
+    let window = video_subsystem
+        .window("Game", 900, 700)
+        .opengl()
+        .resizable()
+        .build()
         .unwrap();
 
-    // Create a new material
-    let material = materials.add(MyMaterial::default());
+    let _gl_context = window.gl_create_context().unwrap();
+    let _gl =
+        gl::load_with(|s| video_subsystem.gl_get_proc_address(s) as *const std::os::raw::c_void);
 
-    // Camera
-    commands
-        .spawn_bundle(PerspectiveCameraBundle {
-            transform: Transform::from_translation(Vec3::ONE).looking_at(Vec3::ZERO, Vec3::Y),
-            ..Default::default()
-        })
-        .insert(bevy_orbit_controls::OrbitCamera {
-            distance: 200.0,
-            ..Default::default()
-        });
-
-    let transform_rot = Transform::from_rotation(Quat::from_rotation_x(std::f32::consts::PI));
-    let transform_mov = Transform::from_translation(Vec3::new(0.0, -390.0, 50.0));
-    let transform = transform_rot * transform_mov;
-    let mesh_handle = asset_server.load(MODEL_PATH);
-    commands
-        .spawn_bundle(MeshBundle {
-            mesh: mesh_handle,
-            transform,
-            render_pipelines: RenderPipelines::from_pipelines(vec![RenderPipeline::new(
-                pipeline_handle,
-            )]),
-            ..Default::default()
-        })
-        .insert(material);
-
-    let (_, mesh) = meshes.iter().next().expect("No mesh found");
-    let vertices = mesh.get_vertex_buffer_data();
-
-    let (mut xmin, mut ymin, mut zmin) = (u8::MAX, u8::MAX, u8::MAX);
-    let (mut xmax, mut ymax, mut zmax) = (u8::MIN, u8::MIN, u8::MIN);
-
-    let mut iterator = vertices.chunks_exact(3);
-    while let Some([x, y, z]) = iterator.next() {
-        xmin = xmin.min(*x);
-        ymin = ymin.min(*y);
-        zmin = zmin.min(*z);
-        xmax = xmax.max(*x);
-        ymax = ymax.max(*y);
-        zmax = zmax.max(*z);
+    unsafe {
+        gl::Viewport(0, 0, 1920, 1080);
+        gl::ClearColor(0.3, 0.3, 0.5, 1.0);
     }
 
-    let corner1 = vec3(xmin as f32, ymin as f32, zmin as f32);
-    let corner2 = vec3(xmax as f32, ymax as f32, zmax as f32);
-    let diagonal = corner1 - corner2;
-    let max_distance = diagonal.length();
+    let vert_shader = render_gl::Shader::from_vert_source(
+        &CString::new(include_str!("../assets/triangle.vert")).unwrap(),
+    )
+    .unwrap();
 
-    let (handle, _) = materials.iter().next().expect("No material found");
-    let material = materials.get_mut(handle).expect("No material extracted");
-    material.set_model_size(max_distance);
+    let frag_shader = render_gl::Shader::from_frag_source(
+        &CString::new(include_str!("../assets/triangle.frag")).unwrap(),
+    )
+    .unwrap();
+
+    let mut event_pump = sdl.event_pump().unwrap();
+    'main: loop {
+        for event in event_pump.poll_iter() {
+            match event {
+                sdl2::event::Event::Quit { .. } => break 'main,
+                _ => {}
+            }
+        }
+        unsafe {
+            gl::Clear(gl::COLOR_BUFFER_BIT);
+        }
+        window.gl_swap_window();
+
+        // render window contents here
+    }
 }
