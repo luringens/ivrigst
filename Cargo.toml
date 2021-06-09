@@ -11,6 +11,7 @@ resolver = "2"
 gl = "0.14.0"
 sdl2 = { version = "0.34.5", features = ["bundled", "static-link"] }
 anyhow = "1.0.40"
+render_gl_derive = { path = "render_gl_derive" }
 
 [build-dependencies]
 walkdir = "2.3.2"
