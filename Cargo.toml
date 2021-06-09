@@ -10,3 +10,7 @@ resolver = "2"
 [dependencies]
 gl = "0.14.0"
 sdl2 = { version = "0.34.5", features = ["bundled", "static-link"] }
+anyhow = "1.0.40"
+
+[build-dependencies]
+walkdir = "2.3.2"

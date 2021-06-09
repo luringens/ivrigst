@@ -1,13 +1,27 @@
+use anyhow::{anyhow, Context, Result};
 use gl;
 use std;
 use std::ffi::{CStr, CString};
+
+use crate::resources::Resources;
 
 pub struct Program {
     id: gl::types::GLuint,
 }
 
 impl Program {
-    pub fn from_shaders(shaders: &[Shader]) -> Result<Program, String> {
+    pub fn from_res(res: &Resources, name: &str) -> Result<Program> {
+        const POSSIBLE_EXT: [&str; 2] = [".vert", ".frag"];
+
+        let shaders = POSSIBLE_EXT
+            .iter()
+            .map(|file_extension| Shader::from_res(res, &format!("{}{}", name, file_extension)))
+            .collect::<Result<Vec<Shader>>>()?;
+
+        Program::from_shaders(&shaders[..])
+    }
+
+    pub fn from_shaders(shaders: &[Shader]) -> Result<Program> {
         let program_id = unsafe { gl::CreateProgram() };
 
         for shader in shaders {
@@ -42,7 +56,7 @@ impl Program {
                 );
             }
 
-            return Err(error.to_string_lossy().into_owned());
+            return Err(anyhow!(error.to_string_lossy().into_owned()));
         }
 
         for shader in shaders {
@@ -78,16 +92,36 @@ pub struct Shader {
 }
 
 impl Shader {
-    pub fn from_source(source: &CStr, kind: gl::types::GLenum) -> Result<Shader, String> {
+    pub fn from_res(res: &Resources, name: &str) -> Result<Shader> {
+        const POSSIBLE_EXT: [(&str, gl::types::GLenum); 2] =
+            [(".vert", gl::VERTEX_SHADER), (".frag", gl::FRAGMENT_SHADER)];
+
+        let shader_kind = POSSIBLE_EXT
+            .iter()
+            .find(|&&(file_extension, _)| name.ends_with(file_extension))
+            .map(|&(_, kind)| kind)
+            .context(format!(
+                "Can not determine shader type for resource {}",
+                name
+            ))?;
+
+        let source = res
+            .load_cstring(name)
+            .context(format!("Error loading resource {}", name))?;
+
+        Shader::from_source(&source, shader_kind)
+    }
+
+    pub fn from_source(source: &CStr, kind: gl::types::GLenum) -> Result<Shader> {
         let id = shader_from_source(source, kind)?;
         Ok(Shader { id })
     }
 
-    pub fn from_vert_source(source: &CStr) -> Result<Shader, String> {
+    pub fn from_vert_source(source: &CStr) -> Result<Shader> {
         Shader::from_source(source, gl::VERTEX_SHADER)
     }
 
-    pub fn from_frag_source(source: &CStr) -> Result<Shader, String> {
+    pub fn from_frag_source(source: &CStr) -> Result<Shader> {
         Shader::from_source(source, gl::FRAGMENT_SHADER)
     }
 
@@ -104,7 +138,7 @@ impl Drop for Shader {
     }
 }
 
-fn shader_from_source(source: &CStr, kind: gl::types::GLenum) -> Result<gl::types::GLuint, String> {
+fn shader_from_source(source: &CStr, kind: gl::types::GLenum) -> Result<gl::types::GLuint> {
     let id = unsafe { gl::CreateShader(kind) };
     unsafe {
         gl::ShaderSource(id, 1, &source.as_ptr(), std::ptr::null());
@@ -133,7 +167,7 @@ fn shader_from_source(source: &CStr, kind: gl::types::GLenum) -> Result<gl::type
             );
         }
 
-        return Err(error.to_string_lossy().into_owned());
+        return Err(anyhow!(error.to_string_lossy().into_owned()));
     }
 
     Ok(id)
