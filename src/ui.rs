@@ -1,5 +1,4 @@
-use bevy::math::vec3;
-use bevy::prelude::*;
+use bevy::{math::vec3, prelude::*};
 use bevy_egui::{egui, EguiContext};
 
 use crate::material::MyMaterial;

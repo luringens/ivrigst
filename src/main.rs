@@ -4,9 +4,11 @@ mod ui;
 use bevy::{
     math::vec3,
     prelude::*,
+    reflect::TypeUuid,
     render::{
         pipeline::{PipelineDescriptor, RenderPipeline},
         render_graph::{base, AssetRenderResourcesNode, RenderGraph},
+        renderer::RenderResources,
         shader::{asset_shader_defs_system, ShaderStages},
     },
 };
@@ -30,6 +32,7 @@ fn main() {
         .add_plugin(bevy_obj::ObjPlugin)
         .add_plugin(EguiPlugin)
         .add_plugin(bevy_orbit_controls::OrbitCameraPlugin)
+        .add_asset::<ShadowMaterial>()
         .add_asset::<MyMaterial>()
         .add_startup_system(setup.system())
         .add_system(ui.system())
@@ -40,6 +43,10 @@ fn main() {
         )
         .run();
 }
+
+#[derive(Default, RenderResources, TypeUuid)]
+#[uuid = "1d24c0d9-1bfa-45e3-a6e9-955dfe91c89a"]
+struct ShadowMaterial {}
 
 fn setup(
     mut commands: Commands,
@@ -58,6 +65,11 @@ fn setup(
         vertex: asset_server.load::<Shader, _>("shader.vert"),
         fragment: Some(asset_server.load::<Shader, _>("shader.frag")),
     }));
+    // Create a new shader pipeline
+    let shadow_pipeline_handle = pipelines.add(PipelineDescriptor::default_config(ShaderStages {
+        vertex: asset_server.load::<Shader, _>("shadow.vert"),
+        fragment: Some(asset_server.load::<Shader, _>("shadow.frag")),
+    }));
 
     // Add an AssetRenderResourcesNode to our Render Graph. This will bind MyMaterial resources to
     // our shader
@@ -66,10 +78,23 @@ fn setup(
         AssetRenderResourcesNode::<MyMaterial>::new(true),
     );
 
+    // Add an AssetRenderResourcesNode to our Render Graph. This will bind MyMaterial resources to
+    // our shader
+    let shadow_node = render_graph.add_system_node(
+        "shadow_material",
+        AssetRenderResourcesNode::<ShadowMaterial>::new(true),
+    );
+
     // Add a Render Graph edge connecting our new "my_material" node to the main pass node. This
     // ensures "my_material" runs before the main pass
     render_graph
-        .add_node_edge("my_material", base::node::MAIN_PASS)
+        .add_node_edge("shadow_material", base::node::MAIN_PASS)
+        .unwrap();
+
+    // Add a Render Graph edge connecting our new "my_material" node to the main pass node. This
+    // ensures "my_material" runs before the main pass
+    render_graph
+        .add_node_edge("my_material", shadow_node)
         .unwrap();
 
     // Create a new material
@@ -94,9 +119,10 @@ fn setup(
         .spawn_bundle(MeshBundle {
             mesh: mesh_handle,
             transform,
-            render_pipelines: RenderPipelines::from_pipelines(vec![RenderPipeline::new(
-                pipeline_handle,
-            )]),
+            render_pipelines: RenderPipelines::from_pipelines(vec![
+                RenderPipeline::new(shadow_pipeline_handle),
+                RenderPipeline::new(pipeline_handle),
+            ]),
             ..Default::default()
         })
         .insert(material);
