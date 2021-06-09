@@ -8,8 +8,12 @@ resolver = "2"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = { version = "0.5.0", features = ["dynamic"] }
-bevy-orbit-controls = "2.0"
-bevy_obj = "0.5"
-color-backtrace = "0.5"
-bevy_egui = "0.5"
+async-executor = "1.4.1"
+bytemuck = { version = "1.5.1", features = ["derive"] }
+cgmath = "0.18.0"
+color-backtrace = "0.5.1"
+env_logger = "0.8.3"
+pollster = "0.2"
+wgpu = "0.8.1"
+winit = "0.25.0"
+log = "0.4.14"
