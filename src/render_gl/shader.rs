@@ -1,9 +1,8 @@
+use crate::resources::Resources;
 use anyhow::{anyhow, Context, Result};
 use gl;
 use std;
 use std::ffi::{CStr, CString};
-
-use crate::resources::Resources;
 
 pub struct Program {
     id: gl::types::GLuint,
