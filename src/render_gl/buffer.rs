@@ -1,3 +1,5 @@
+#![allow(clippy::new_without_default)]
+
 use gl;
 
 pub type ArrayBuffer = Buffer<{ gl::ARRAY_BUFFER }>;
@@ -44,7 +46,7 @@ impl<const T: gl::types::GLuint> Buffer<T> {
 impl<const T: gl::types::GLuint> Drop for Buffer<T> {
     fn drop(&mut self) {
         unsafe {
-            gl::DeleteBuffers(1, &mut self.vbo);
+            gl::DeleteBuffers(1, &self.vbo);
         }
     }
 }
@@ -79,7 +81,7 @@ impl VertexArray {
 impl Drop for VertexArray {
     fn drop(&mut self) {
         unsafe {
-            gl::DeleteVertexArrays(1, &mut self.vao);
+            gl::DeleteVertexArrays(1, &self.vao);
         }
     }
 }

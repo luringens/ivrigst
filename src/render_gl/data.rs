@@ -12,6 +12,9 @@ impl f32_f32_f32 {
         f32_f32_f32 { d0, d1, d2 }
     }
 
+    /// Sets the vertex attrib pointer.
+    /// # Safety
+    /// Unsafe as all things OpenGL is. Stride, location and offset must be accurate.
     pub unsafe fn vertex_attrib_pointer(stride: usize, location: usize, offset: usize) {
         gl::EnableVertexAttribArray(location as gl::types::GLuint);
         gl::VertexAttribPointer(

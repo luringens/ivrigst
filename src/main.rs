@@ -1,21 +1,11 @@
 pub mod render_gl;
 pub mod resources;
+mod triangle;
 
-use render_gl::buffer;
-use render_gl_derive::VertexAttribPointers;
-
-use crate::render_gl::data;
 use crate::resources::Resources;
+use nalgebra as na;
 use std::path::Path;
-
-#[derive(Copy, Clone, Debug, VertexAttribPointers)]
-#[repr(C, packed)]
-struct Vertex {
-    #[location = 0]
-    pos: data::f32_f32_f32,
-    #[location = 1]
-    clr: data::f32_f32_f32,
-}
+use triangle::Triangle;
 
 fn main() {
     let res = Resources::from_relative_exe_path(Path::new("assets")).unwrap();
@@ -29,7 +19,7 @@ fn main() {
     gl_attr.set_context_version(4, 1);
 
     let window = video_subsystem
-        .window("Game", 900, 700)
+        .window("Game", 1920, 1080)
         .opengl()
         .resizable()
         .build()
@@ -39,38 +29,13 @@ fn main() {
     let _gl =
         gl::load_with(|s| video_subsystem.gl_get_proc_address(s) as *const std::os::raw::c_void);
 
-    // set up shader program
-    let shader_program = render_gl::Program::from_res(&res, "shaders/triangle").unwrap();
-
-    // set up vertex buffer object
-    #[rustfmt::skip]
-    let vertices: Vec<Vertex> = vec![
-        Vertex { pos: ( 0.5, -0.5, 0.0).into(), clr: (1.0, 0.0, 0.0).into() }, // bottom right
-        Vertex { pos: (-0.5, -0.5, 0.0).into(), clr: (0.0, 1.0, 0.0).into() }, // bottom left
-        Vertex { pos: ( 0.0,  0.5, 0.0).into(), clr: (0.0, 0.0, 1.0).into() }  // top
-    ];
-
-    let vbo = buffer::ArrayBuffer::new();
-    vbo.bind();
-    vbo.static_draw_data(&vertices);
-    vbo.unbind();
-
-    // set up vertex array object
-
-    let vao = buffer::VertexArray::new();
-
-    vao.bind();
-    vbo.bind();
-    Vertex::vertex_attrib_pointers();
-    vbo.unbind();
-    vao.unbind();
+    let triangle = Triangle::new(&res).expect("Failed to set up triangle.");
 
     // set up shared state for window
-
-    unsafe {
-        gl::Viewport(0, 0, 900, 700);
-        gl::ClearColor(0.3, 0.3, 0.5, 1.0);
-    }
+    let mut viewport = render_gl::Viewport::for_window(1920, 1080);
+    viewport.set_used();
+    let color_buffer = render_gl::ColorBuffer::from_color(na::Vector3::new(0.3, 0.3, 0.5));
+    color_buffer.set_used();
 
     // main loop
 
@@ -79,26 +44,19 @@ fn main() {
         for event in event_pump.poll_iter() {
             match event {
                 sdl2::event::Event::Quit { .. } => break 'main,
+                sdl2::event::Event::Window {
+                    win_event: sdl2::event::WindowEvent::Resized(w, h),
+                    ..
+                } => {
+                    viewport.update_size(w, h);
+                    viewport.set_used();
+                }
                 _ => {}
             }
         }
 
-        unsafe {
-            gl::Clear(gl::COLOR_BUFFER_BIT);
-        }
-
-        // draw triangle
-
-        shader_program.set_used();
-        unsafe {
-            vao.bind();
-            gl::DrawArrays(
-                gl::TRIANGLES, // mode
-                0,             // starting index in the enabled arrays
-                3,             // number of indices to be rendered
-            );
-        }
-
+        color_buffer.clear();
+        triangle.render();
         window.gl_swap_window();
     }
 }
