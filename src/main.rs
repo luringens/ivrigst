@@ -1,3 +1,4 @@
+mod camera;
 pub mod render_gl;
 pub mod resources;
 mod triangle;
@@ -29,7 +30,7 @@ fn main() {
     let _gl =
         gl::load_with(|s| video_subsystem.gl_get_proc_address(s) as *const std::os::raw::c_void);
 
-    let triangle = Triangle::new(&res).expect("Failed to set up triangle.");
+    let mut triangle = Triangle::new(&res).expect("Failed to set up triangle.");
 
     // set up shared state for window
     let mut viewport =
@@ -38,8 +39,16 @@ fn main() {
     let color_buffer = render_gl::ColorBuffer::from_color(na::Vector3::new(0.3, 0.3, 0.5));
     color_buffer.set_used();
 
-    // main loop
+    // Camera and projection
+    let model_isometry = na::Isometry3::new(na::Vector3::zeros(), na::zero());
+    let eye = na::Point3::new(3., 0., 3.);
+    let target = na::Point3::new(0., 0., 0.);
+    let fov = 3.14 / 4.0; // 45 degrees in radians
+    let camera = camera::Camera::new(eye, target, fov);
 
+    render_gl::check_gl_error();
+
+    let mut mvp_needs_update = true;
     let mut event_pump = sdl.event_pump().unwrap();
     'main: loop {
         for event in event_pump.poll_iter() {
@@ -51,13 +60,26 @@ fn main() {
                 } => {
                     viewport.update_size(w, h);
                     viewport.set_used();
+                    mvp_needs_update = true;
                 }
                 _ => {}
             }
         }
 
+        if mvp_needs_update {
+            let aspect = window.size().1 as f32 / window.size().0 as f32;
+            let model_view_projection = camera.construct_mvp(aspect, model_isometry);
+            let shader = triangle.shader();
+            shader.set_used();
+            unsafe {
+                shader.set_uniform_matrix4("ProjectionMatrix", model_view_projection);
+            }
+            mvp_needs_update = false;
+        }
+
         color_buffer.clear();
         triangle.render();
         window.gl_swap_window();
+        render_gl::check_gl_error();
     }
 }

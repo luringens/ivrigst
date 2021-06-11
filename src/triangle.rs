@@ -1,5 +1,5 @@
 use crate::{
-    render_gl::{self, buffer, data},
+    render_gl::{self, buffer, data, Program},
     resources::Resources,
 };
 use anyhow::Result;
@@ -54,6 +54,10 @@ impl Triangle {
             _vbo: vbo,
             vao,
         })
+    }
+
+    pub fn shader(&mut self) -> &mut Program {
+        &mut self.program
     }
 
     pub fn render(&self) {
