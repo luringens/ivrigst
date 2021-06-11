@@ -19,7 +19,7 @@ fn main() {
     gl_attr.set_context_version(4, 1);
 
     let window = video_subsystem
-        .window("Game", 1920, 1080)
+        .window("MedVis", 900, 900)
         .opengl()
         .resizable()
         .build()
@@ -32,7 +32,8 @@ fn main() {
     let triangle = Triangle::new(&res).expect("Failed to set up triangle.");
 
     // set up shared state for window
-    let mut viewport = render_gl::Viewport::for_window(1920, 1080);
+    let mut viewport =
+        render_gl::Viewport::for_window(window.size().0 as i32, window.size().1 as i32);
     viewport.set_used();
     let color_buffer = render_gl::ColorBuffer::from_color(na::Vector3::new(0.3, 0.3, 0.5));
     color_buffer.set_used();
