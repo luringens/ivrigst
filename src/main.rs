@@ -1,6 +1,7 @@
 pub mod render_gl;
 pub mod resources;
 
+use render_gl::buffer;
 use render_gl_derive::VertexAttribPointers;
 
 use crate::render_gl::data;
@@ -49,36 +50,20 @@ fn main() {
         Vertex { pos: ( 0.0,  0.5, 0.0).into(), clr: (0.0, 0.0, 1.0).into() }  // top
     ];
 
-    let mut vbo: gl::types::GLuint = 0;
-    unsafe {
-        gl::GenBuffers(1, &mut vbo);
-    }
-
-    unsafe {
-        gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
-        gl::BufferData(
-            gl::ARRAY_BUFFER,                                                          // target
-            (vertices.len() * std::mem::size_of::<Vertex>()) as gl::types::GLsizeiptr, // size of data in bytes
-            vertices.as_ptr() as *const gl::types::GLvoid, // pointer to data
-            gl::STATIC_DRAW,                               // usage
-        );
-        gl::BindBuffer(gl::ARRAY_BUFFER, 0);
-    }
+    let vbo = buffer::ArrayBuffer::new();
+    vbo.bind();
+    vbo.static_draw_data(&vertices);
+    vbo.unbind();
 
     // set up vertex array object
 
-    let mut vao: gl::types::GLuint = 0;
-    unsafe {
-        gl::GenVertexArrays(1, &mut vao);
-    }
+    let vao = buffer::VertexArray::new();
 
-    unsafe {
-        gl::BindVertexArray(vao);
-        gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
-        Vertex::vertex_attrib_pointers();
-        gl::BindBuffer(gl::ARRAY_BUFFER, 0);
-        gl::BindVertexArray(0);
-    }
+    vao.bind();
+    vbo.bind();
+    Vertex::vertex_attrib_pointers();
+    vbo.unbind();
+    vao.unbind();
 
     // set up shared state for window
 
@@ -106,7 +91,7 @@ fn main() {
 
         shader_program.set_used();
         unsafe {
-            gl::BindVertexArray(vao);
+            vao.bind();
             gl::DrawArrays(
                 gl::TRIANGLES, // mode
                 0,             // starting index in the enabled arrays
