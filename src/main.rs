@@ -1,15 +1,16 @@
 mod camera;
+mod model;
 pub mod render_gl;
 pub mod resources;
-mod triangle;
 
 use crate::resources::Resources;
+use model::Model;
 use nalgebra as na;
 use std::path::Path;
-use triangle::Triangle;
 
 fn main() {
-    let res = Resources::from_relative_exe_path(Path::new("assets")).unwrap();
+    let res =
+        Resources::from_relative_exe_path(Path::new("assets")).expect("Failed to find assets");
 
     let sdl = sdl2::init().unwrap();
     let video_subsystem = sdl.video().unwrap();
@@ -30,7 +31,7 @@ fn main() {
     let _gl =
         gl::load_with(|s| video_subsystem.gl_get_proc_address(s) as *const std::os::raw::c_void);
 
-    let mut triangle = Triangle::new(&res).expect("Failed to set up triangle.");
+    let mut triangle = Model::new(&res).expect("Failed to set up triangle.");
 
     // set up shared state for window
     let mut viewport =
@@ -41,10 +42,13 @@ fn main() {
 
     // Camera and projection
     let model_isometry = na::Isometry3::new(na::Vector3::zeros(), na::zero());
-    let eye = na::Point3::new(3., 0., 3.);
-    let target = na::Point3::new(0., 0., 0.);
-    let fov = 3.14 / 4.0; // 45 degrees in radians
-    let camera = camera::Camera::new(eye, target, fov);
+    let mut camera = camera::Camera::new();
+
+    unsafe {
+        // gl::Enable(gl::CULL_FACE);
+        gl::Enable(gl::DEPTH_TEST);
+        gl::DepthFunc(gl::LESS);
+    }
 
     render_gl::check_gl_error();
 
@@ -60,6 +64,16 @@ fn main() {
                 } => {
                     viewport.update_size(w, h);
                     viewport.set_used();
+                    mvp_needs_update = true;
+                }
+                sdl2::event::Event::MouseButtonDown { .. } => camera.mousedown(),
+                sdl2::event::Event::MouseButtonUp { .. } => camera.mouseup(),
+                sdl2::event::Event::MouseMotion { xrel, yrel, .. } => {
+                    camera.mousemove(xrel, yrel);
+                    mvp_needs_update = true;
+                }
+                sdl2::event::Event::MouseWheel { y, .. } => {
+                    camera.mousewheel(y);
                     mvp_needs_update = true;
                 }
                 _ => {}

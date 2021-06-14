@@ -34,7 +34,7 @@ impl<const T: gl::types::GLuint> Buffer<T> {
     pub fn static_draw_data<S>(&self, data: &[S]) {
         unsafe {
             gl::BufferData(
-                gl::ARRAY_BUFFER,
+                T,
                 (data.len() * ::std::mem::size_of::<S>()) as gl::types::GLsizeiptr,
                 data.as_ptr() as *const gl::types::GLvoid,
                 gl::STATIC_DRAW,
@@ -45,6 +45,7 @@ impl<const T: gl::types::GLuint> Buffer<T> {
 
 impl<const T: gl::types::GLuint> Drop for Buffer<T> {
     fn drop(&mut self) {
+        self.unbind();
         unsafe {
             gl::DeleteBuffers(1, &self.vbo);
         }
@@ -80,6 +81,7 @@ impl VertexArray {
 
 impl Drop for VertexArray {
     fn drop(&mut self) {
+        self.unbind();
         unsafe {
             gl::DeleteVertexArrays(1, &self.vao);
         }

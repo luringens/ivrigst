@@ -34,6 +34,19 @@ impl Resources {
 
         Ok(unsafe { ffi::CString::from_vec_unchecked(buffer) })
     }
+
+    pub fn load_model(&self, resource_name: &str) -> Result<tobj::Mesh> {
+        let path = resource_name_to_path(&self.root_path, resource_name);
+        let settings = tobj::LoadOptions {
+            single_index: true,
+            triangulate: true,
+            ..Default::default()
+        };
+        let (mut models, _) = tobj::load_obj(path, &settings)?;
+        let model = models.pop().ok_or(anyhow!("Obj file has no model!"))?;
+
+        Ok(model.mesh)
+    }
 }
 
 fn resource_name_to_path(root_dir: &Path, location: &str) -> PathBuf {

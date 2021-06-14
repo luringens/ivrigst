@@ -1,7 +1,7 @@
 #version 330 core
 
 layout (location = 0) in vec3 Position;
-layout (location = 1) in vec3 Color;
+layout (location = 1) in vec3 Normal;
 uniform mat4 ProjectionMatrix;
 
 out VS_OUTPUT {
@@ -11,5 +11,5 @@ out VS_OUTPUT {
 void main()
 {
     gl_Position = ProjectionMatrix * vec4(Position, 1.0);
-    OUT.Color = Color;
+    OUT.Color = Normal;
 }
