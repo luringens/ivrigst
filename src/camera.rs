@@ -47,14 +47,18 @@ impl Camera {
             return;
         }
 
-        self.pitch = (self.pitch + f32::consts::TAU / 500.0 * xrel as f32) % f32::consts::TAU;
-        self.roll = (self.roll + f32::consts::TAU / 500.0 * yrel as f32).clamp(
+        self.pitch = (self.pitch + f32::consts::TAU / 500.0 * -xrel as f32) % f32::consts::TAU;
+        self.roll = (self.roll + f32::consts::TAU / 500.0 * -yrel as f32).clamp(
             -f32::consts::PI / 2.0 + 0.001,
             f32::consts::PI / 2.0 - 0.001,
         );
     }
 
     pub fn mousewheel(&mut self, y: i32) {
-        self.dist = (self.dist - y as f32).clamp(0.0, f32::MAX);
+        self.dist = (self.dist - 2.0 * y as f32).clamp(0.0, f32::MAX);
+    }
+
+    pub fn set_dist(&mut self, dist: f32) {
+        self.dist = dist;
     }
 }

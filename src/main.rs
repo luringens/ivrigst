@@ -31,7 +31,7 @@ fn main() {
     let _gl =
         gl::load_with(|s| video_subsystem.gl_get_proc_address(s) as *const std::os::raw::c_void);
 
-    let mut triangle = Model::new(&res).expect("Failed to set up triangle.");
+    let mut model = Model::new(&res).expect("Failed to set up triangle.");
 
     // set up shared state for window
     let mut viewport =
@@ -43,6 +43,7 @@ fn main() {
     // Camera and projection
     let model_isometry = na::Isometry3::new(na::Vector3::zeros(), na::zero());
     let mut camera = camera::Camera::new();
+    camera.set_dist(model.get_size().magnitude() * 1.2);
 
     unsafe {
         // gl::Enable(gl::CULL_FACE);
@@ -83,7 +84,7 @@ fn main() {
         if mvp_needs_update {
             let aspect = window.size().1 as f32 / window.size().0 as f32;
             let model_view_projection = camera.construct_mvp(aspect, model_isometry);
-            let shader = triangle.shader();
+            let shader = model.shader();
             shader.set_used();
             unsafe {
                 shader.set_uniform_matrix4("ProjectionMatrix", model_view_projection);
@@ -92,7 +93,7 @@ fn main() {
         }
 
         color_buffer.clear();
-        triangle.render();
+        model.render();
         window.gl_swap_window();
         render_gl::check_gl_error();
     }
