@@ -78,8 +78,6 @@ impl Model {
         vbo.unbind();
         vao.unbind();
 
-        // panic!();
-
         Ok(Self {
             program,
             _vbo: vbo,
@@ -107,8 +105,8 @@ impl Model {
             gl::DrawElements(
                 gl::TRIANGLES,
                 self.indices,
-                gl::UNSIGNED_INT,             // starting index in the enabled arrays
-                0 as *const std::ffi::c_void, // number of indices to be rendered
+                gl::UNSIGNED_INT,
+                0 as *const std::ffi::c_void,
             );
         }
         self.ibo.unbind();
