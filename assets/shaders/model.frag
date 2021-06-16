@@ -94,19 +94,24 @@ void main() {
     float near_plane = camera_dist - model_size / 2.0 * distance_shading_constrict;
     float far_plane = camera_dist + model_size / 2.0 * distance_shading_constrict;
 
+    float power = distance_shading_power;
+    if (distance_shading_channel == DSC_HUE) {
+        power = 1.0;
+    }
+
     // Calculate magnitude of shading.
     float z = abs(gl_FragCoord.z / gl_FragCoord.w / 1);
-    float d = 1.0 - min(smoothstep(near_plane, far_plane, z), distance_shading_power);
+    float d = 1.0 - min(smoothstep(near_plane, far_plane, z), power);
     color = rgb2hsv(color);
 
     // Perform shading on channel of choice.
     if (distance_shading_channel == DSC_HUE) {
         color.x = d;
     }
-    if (distance_shading_channel == DSC_SATURATION) {
+    else if (distance_shading_channel == DSC_SATURATION) {
         color.y *= d;
     }
-    if (distance_shading_channel == DSC_VALUE) {
+    else if (distance_shading_channel == DSC_VALUE) {
         color.z *= d;
     }
     color = hsv2rgb(color);
