@@ -1,8 +1,8 @@
 #version 330 core
 
-uniform sampler2D u_sampler;
-in vec4 v_rgba;
-in vec2 v_tc;
+uniform sampler2D texture_sampler;
+in vec4 vertex_color_rgba;
+in vec2 vertex_texture_coordinate;
 
 // 0-255 sRGB  from  0-1 linear
 vec3 srgb_from_linear(vec3 rgb) {
@@ -18,7 +18,7 @@ vec4 srgba_from_linear(vec4 rgba) {
 
 void main() {
   // The texture is set up with `SRGB8_ALPHA8`, so no need to decode here!
-  vec4 texture_rgba = texture2D(u_sampler, v_tc);
+  vec4 texture_rgba = texture2D(texture_sampler, vertex_texture_coordinate);
 
-  gl_FragColor = srgba_from_linear(v_rgba * texture_rgba) / 255.0;
+  gl_FragColor = srgba_from_linear(vertex_color_rgba * texture_rgba) / 255.0;
 }

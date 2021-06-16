@@ -1,11 +1,11 @@
 #version 330 core
 
-uniform vec2 u_screen_size;
-layout (location = 0) in vec2 a_pos;
-layout (location = 1) in vec2 a_tc;
-layout (location = 2) in vec4 a_srgba; // 0-255 sRGB
-out vec4 v_rgba;
-out vec2 v_tc;
+uniform vec2 screen_size;
+layout (location = 0) in vec2 vertex_position;
+layout (location = 1) in vec2 texture_coordinate;
+layout (location = 2) in vec4 color_srgba; // 0-255 sRGB
+out vec4 vertex_color_rgba;
+out vec2 vertex_texture_coordinate;
 
 // 0-1 linear  from  0-255 sRGB
 vec3 linear_from_srgb(vec3 srgb) {
@@ -21,12 +21,12 @@ vec4 linear_from_srgba(vec4 srgba) {
 
 void main() {
   // egui encodes vertex colors in gamma spaces, so we must decode the colors here:
-  v_rgba = linear_from_srgba(a_srgba);
-  v_tc = a_tc;
+  vertex_color_rgba = linear_from_srgba(color_srgba);
+  vertex_texture_coordinate = texture_coordinate;
 
   gl_Position = vec4(
-    2.0 * a_pos.x / u_screen_size.x - 1.0,
-    1.0 - 2.0 * a_pos.y / u_screen_size.y,
+    2.0 * vertex_position.x / screen_size.x - 1.0,
+    1.0 - 2.0 * vertex_position.y / screen_size.y,
     0.0,
     1.0
   );

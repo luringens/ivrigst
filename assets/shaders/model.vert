@@ -1,18 +1,18 @@
 #version 450
 
-layout(location = 0) in vec3 Vertex_Position;
-layout(location = 1) in vec3 Vertex_Normal;
+layout(location = 0) in vec3 vertex_position;
+layout(location = 1) in vec3 vertex_normal;
 
-uniform mat4 ProjectionMatrix;
+uniform mat4 projection_matrix;
 
-layout(location = 0) out vec3 normalVector;
-layout(location = 1) out vec3 lightVector;
-layout(location = 2) out vec3 positionVector;
+layout(location = 0) out vec3 normal_vector;
+layout(location = 1) out vec3 light_vector;
+layout(location = 2) out vec3 position_vector;
 
 void main() {
-    normalVector = normalize(Vertex_Normal);
-    lightVector = vec3(ProjectionMatrix * vec4(normalVector, 0.0));
-    positionVector = Vertex_Position;
+    normal_vector = normalize(vertex_normal);
+    light_vector = vec3(projection_matrix * vec4(normal_vector, 0.0));
+    position_vector = vertex_position;
     
-    gl_Position = ProjectionMatrix * vec4(Vertex_Position, 1.0);
+    gl_Position = projection_matrix * vec4(vertex_position, 1.0);
 }

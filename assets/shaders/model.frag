@@ -15,9 +15,9 @@ uniform uint distance_shading_channel;
 uniform float distance_shading_constrict;
 uniform float toon_factor;
 
-layout(location = 0) in vec3 normalVector;
-layout(location = 1) in vec3 lightVector;
-layout(location = 2) in vec3 positionVector;
+layout(location = 0) in vec3 normal_vector;
+layout(location = 1) in vec3 light_vector;
+layout(location = 2) in vec3 position_vector;
 
 // https://stackoverflow.com/a/17897228
 // All components are in the range [0…1], including hue.
@@ -47,7 +47,7 @@ void main() {
     vec3 toonShadingColor;
     {
         vec3 cl = color;    
-        vec3 light = -normalize(lightVector.xyz);    
+        vec3 light = -normalize(light_vector.xyz);    
         float vdn = light.z;
         cl *= round(vdn * 5) / 5;
         cl *= vdn;
@@ -72,18 +72,18 @@ void main() {
         float shininess = 5;
 
         // Vector to camera
-        vec3 v = normalize(camera_position - positionVector);
+        vec3 v = normalize(camera_position - position_vector);
 
         // Vector to light source
         vec3 light_position = camera_position;
-        vec3 lm = normalize(light_position - positionVector);
+        vec3 lm = normalize(light_position - position_vector);
 
         // Reflected light vector
-        vec3 np = 2 * normalize(dot(lm, normalVector) * normalVector);
+        vec3 np = 2 * normalize(dot(lm, normal_vector) * normal_vector);
         vec3 rm = normalize(np - lm);
 
         // Light intensity
-        float ip = ambientReflection * ambientIntensity + (diffuseReflection * diffuseIntensity * dot(lm, normalVector) + specularReflection * specularIntensity * pow(max(0, min(1, dot(rm, v))), shininess));
+        float ip = ambientReflection * ambientIntensity + (diffuseReflection * diffuseIntensity * dot(lm, normal_vector) + specularReflection * specularIntensity * pow(max(0, min(1, dot(rm, v))), shininess));
 
         standardShadingColor = ip * color.xyz;
     }

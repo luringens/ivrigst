@@ -7,14 +7,12 @@ pub mod resources;
 mod sdl2_egui_translation;
 mod ui;
 
-use crate::{resources::Resources, sdl2_egui_translation::egui_to_sdl2_cursor};
 use anyhow::{anyhow, Result};
-use model::Model;
 use nalgebra as na;
 use sdl2::event::Event;
-use sdl2_egui_translation::*;
 use std::path::Path;
-use ui::UI;
+
+use crate::{model::Model, resources::Resources, sdl2_egui_translation::*, ui::UI};
 
 fn main() {
     let res =
@@ -29,7 +27,7 @@ fn main() {
     gl_attr.set_context_version(4, 1);
 
     let window = video_subsystem
-        .window("MedVis", 1000, 1000)
+        .window("MedVis", 1200, 800)
         .opengl()
         .resizable()
         .build()
@@ -172,7 +170,7 @@ fn main() {
             let shader = model.shader();
             shader.set_used();
             unsafe {
-                shader.set_uniform_matrix4("ProjectionMatrix", model_view_projection);
+                shader.set_uniform_matrix4("projection_matrix", model_view_projection);
                 shader.set_uniform_3f("camera_position", camera_position);
             }
             mvp_needs_update = false;

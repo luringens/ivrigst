@@ -106,10 +106,8 @@ impl UI {
             // All UI elements have the same depth, so don't do depth testing
             gl::Disable(gl::DEPTH_TEST);
 
-            self.program.set_uniform_2f(
-                "u_screen_size",
-                (window_size.0 as f32, window_size.1 as f32),
-            );
+            self.program
+                .set_uniform_2f("screen_size", (window_size.0 as f32, window_size.1 as f32));
 
             // egui has no consistent mesh normal direction
             gl::Disable(gl::CULL_FACE);
