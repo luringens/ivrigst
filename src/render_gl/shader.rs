@@ -72,6 +72,15 @@ impl Program {
         gl::UniformMatrix4fv(uniform_location, 1, gl::FALSE, data.as_ptr());
     }
 
+    pub unsafe fn set_uniform_3f_arr(&self, uniform_id: &str, [f0, f1, f2]: [f32; 3]) {
+        self.set_uniform_3f(uniform_id, (f0, f1, f2))
+    }
+
+    pub unsafe fn set_uniform_3f(&self, uniform_id: &str, (f0, f1, f2): (f32, f32, f32)) {
+        let uniform_location = self.get_uniform_location(uniform_id);
+        gl::Uniform3f(uniform_location, f0, f1, f2);
+    }
+
     pub unsafe fn set_uniform_2f(&self, uniform_id: &str, data: (f32, f32)) {
         let uniform_location = self.get_uniform_location(uniform_id);
         gl::Uniform2f(uniform_location, data.0, data.1);
@@ -80,6 +89,11 @@ impl Program {
     pub unsafe fn set_uniform_f(&self, uniform_id: &str, data: f32) {
         let uniform_location = self.get_uniform_location(uniform_id);
         gl::Uniform1f(uniform_location, data);
+    }
+
+    pub unsafe fn set_uniform_ui(&self, uniform_id: &str, data: u32) {
+        let uniform_location = self.get_uniform_location(uniform_id);
+        gl::Uniform1ui(uniform_location, data);
     }
 
     unsafe fn get_uniform_location(&self, uniform_id: &str) -> gl::types::GLint {

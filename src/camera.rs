@@ -23,13 +23,17 @@ impl Camera {
         }
     }
 
-    pub fn construct_mvp(&self, aspect: f32, model: na::Isometry3<f32>) -> na::Matrix4<f32> {
+    pub fn position(&self) -> Point3<f32> {
         let rot1 = na::Rotation3::from_euler_angles(self.roll, 0.0, 0.0);
         let rot2 = na::Rotation3::from_euler_angles(0.0, self.pitch, 0.0);
         let rotated = rot2 * rot1 * na::Vector3::z();
-        let scaled = Point3::from(rotated) * self.dist;
+        Point3::from(rotated) * self.dist
+    }
+
+    pub fn construct_mvp(&self, aspect: f32, model: na::Isometry3<f32>) -> na::Matrix4<f32> {
+        let eye = self.position();
         let target = na::Point3::new(0.0, 0.0, 0.0);
-        let view = na::Isometry3::look_at_rh(&scaled, &target, &na::Vector3::y());
+        let view = na::Isometry3::look_at_rh(&eye, &target, &na::Vector3::y());
         let projection = na::Perspective3::new(aspect, self.fov, 0.1, 1000.0);
         projection.into_inner() * (view * model).to_homogeneous()
     }

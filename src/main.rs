@@ -121,11 +121,65 @@ fn main() {
             ));
         }
         ctx.begin_frame(raw_input);
-        egui::Window::new("Configuration").show(&ctx, |ui| {
-            ui.label("Hello world!");
-            if ui.button("Click me").clicked() {
-                eprintln!("Clicky!")
-            }
+        egui::Window::new("Settings").show(&ctx, |ui| {
+            let mut attr = model.get_attributes().clone();
+
+            // Colour widget.
+            ui.horizontal(|ui| {
+                ui.label("Model base colour");
+                ui.color_edit_button_rgb(&mut attr.color);
+            });
+
+            // Toon shading enable/disable
+            ui.horizontal(|ui| {
+                ui.label("Toon shading factor");
+                ui.add(egui::Slider::new(&mut attr.toon_factor, 0.0..=1.0));
+            });
+
+            // Distance shading parameters widget.
+            ui.vertical(|ui| {
+                use crate::model::DistanceShadingChannel as DSC;
+                egui::ComboBox::from_label("Distance shading channel")
+                    .selected_text(format!("{:?}", attr.distance_shading_channel)) // Todo: fix
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(
+                            &mut attr.distance_shading_channel,
+                            DSC::Hue,
+                            format!("{:?}", DSC::Hue),
+                        );
+                        ui.selectable_value(
+                            &mut attr.distance_shading_channel,
+                            DSC::Saturation,
+                            format!("{:?}", DSC::Saturation),
+                        );
+                        ui.selectable_value(
+                            &mut attr.distance_shading_channel,
+                            DSC::Value,
+                            format!("{:?}", DSC::Value),
+                        );
+                        ui.selectable_value(
+                            &mut attr.distance_shading_channel,
+                            DSC::None,
+                            format!("{:?}", DSC::None),
+                        );
+                    });
+                ui.horizontal(|ui| {
+                    ui.label("Distance shading constriction");
+                    ui.add(egui::Slider::new(
+                        &mut attr.distance_shading_constrict,
+                        0.0..=1.0,
+                    ));
+                });
+                ui.horizontal(|ui| {
+                    ui.label("Distance shading power");
+                    ui.add(egui::Slider::new(
+                        &mut attr.distance_shading_power,
+                        0.0..=1.0,
+                    ));
+                });
+            });
+
+            model.set_attributes(attr);
         });
         let (output, shapes) = ctx.end_frame();
         handle_output(output);
@@ -149,10 +203,13 @@ fn main() {
         if mvp_needs_update {
             let aspect = viewport.size().0 as f32 / viewport.size().1 as f32;
             let model_view_projection = camera.construct_mvp(aspect, model_isometry);
+            let c = camera.position();
+            let camera_position = (c[0], c[1], c[2]);
             let shader = model.shader();
             shader.set_used();
             unsafe {
                 shader.set_uniform_matrix4("ProjectionMatrix", model_view_projection);
+                shader.set_uniform_3f("camera_position", camera_position);
             }
             mvp_needs_update = false;
         }

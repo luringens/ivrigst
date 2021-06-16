@@ -1,21 +1,19 @@
 #version 450
 
+#define DSC_NONE 0
+#define DSC_HUE 1
+#define DSC_SATURATION 2
+#define DSC_VALUE 3
+
 layout(location = 0) out vec4 o_Target;
 
-layout(set = 2, binding = 0) uniform MyMaterial_vectors {
-    vec3 camera_position;
-    vec3 color;
-};
-layout(set = 3, binding = 0) uniform MyMaterial_floats {
-    float model_size;
-    float distance_shading_power;
-    float distance_shading_constrict;
-    float toon_factor;
-};
-// layout(set = 4, binding = 0) uniform colorscheme {
-//     sampler2D colorscheme;
-// };
-// layout(set = 3, binding = 1) uniform sampler color_scheme_sampler;
+uniform vec3 camera_position;
+uniform vec3 color;
+uniform float model_size;
+uniform float distance_shading_power;
+uniform uint distance_shading_channel;
+uniform float distance_shading_constrict;
+uniform float toon_factor;
 
 layout(location = 0) in vec3 normalVector;
 layout(location = 1) in vec3 lightVector;
@@ -102,15 +100,15 @@ void main() {
     color = rgb2hsv(color);
 
     // Perform shading on channel of choice.
-# ifdef MYMATERIAL_DISTANCE_SHADING_CHANNEL_HUE
-    color.x = d;
-# endif
-# ifdef MYMATERIAL_DISTANCE_SHADING_CHANNEL_SATURATION
-    color.y *= d;
-# endif
-# ifdef MYMATERIAL_DISTANCE_SHADING_CHANNEL_VALUE
-    color.z *= d;
-# endif
+    if (distance_shading_channel == DSC_HUE) {
+        color.x = d;
+    }
+    if (distance_shading_channel == DSC_SATURATION) {
+        color.y *= d;
+    }
+    if (distance_shading_channel == DSC_VALUE) {
+        color.z *= d;
+    }
     color = hsv2rgb(color);
 
     o_Target = vec4(color, 1);

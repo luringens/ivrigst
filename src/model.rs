@@ -10,8 +10,8 @@ use anyhow::{Context, Result};
 use nalgebra as na;
 use render_gl_derive::VertexAttribPointers;
 
-const SHADER_PATH: &str = "shaders/triangle";
-const SHADER_NAME: &str = "triangle";
+const SHADER_PATH: &str = "shaders/model";
+const SHADER_NAME: &str = "model";
 
 #[derive(Copy, Clone, Debug, VertexAttribPointers)]
 #[repr(C, packed)]
@@ -22,6 +22,40 @@ pub struct Vertex {
     pub normal: data::f32_f32_f32,
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(C)]
+pub enum DistanceShadingChannel {
+    None = 0,
+    Hue = 1,
+    Saturation = 2,
+    Value = 3,
+}
+
+#[derive(Debug, Clone)]
+pub struct Attributes {
+    pub camera_position: [f32; 3],
+    pub color: [f32; 3],
+    pub model_size: f32,
+    pub distance_shading_power: f32,
+    pub distance_shading_constrict: f32,
+    pub toon_factor: f32,
+    pub distance_shading_channel: DistanceShadingChannel,
+}
+
+impl Default for Attributes {
+    fn default() -> Self {
+        Self {
+            camera_position: Default::default(),
+            color: [1.0, 0.56, 0.72],
+            model_size: Default::default(),
+            distance_shading_power: 0.8,
+            distance_shading_constrict: 0.2,
+            toon_factor: 0.8,
+            distance_shading_channel: DistanceShadingChannel::None,
+        }
+    }
+}
+
 pub struct Model {
     program: render_gl::Program,
     vao: buffer::VertexArray,
@@ -29,6 +63,7 @@ pub struct Model {
     ibo: buffer::ElementArrayBuffer,
     indices: i32,
     size: na::Vector3<f32>,
+    attributes: Attributes,
 }
 
 impl Model {
@@ -81,6 +116,18 @@ impl Model {
         vbo.unbind();
         vao.unbind();
 
+        unsafe {
+            program.set_used();
+            program.set_uniform_3f("camera_position", (10.0, 0.0, 0.0));
+            program.set_uniform_3f("color", (0.9, 0.5, 0.9));
+            program.set_uniform_f("model_size", 100.0);
+            program.set_uniform_f("distance_shading_power", 0.5);
+            program.set_uniform_f("distance_shading_constrict", 1.0);
+            program.set_uniform_f("toon_factor", 0.5);
+            program.unset_used();
+            render_gl::check_gl_error();
+        }
+
         Ok(Self {
             program,
             _vbo: vbo,
@@ -88,7 +135,51 @@ impl Model {
             ibo,
             indices: model.indices.len() as i32,
             size: max - min,
+            attributes: Default::default(),
         })
+    }
+
+    pub fn get_attributes(&self) -> &Attributes {
+        &self.attributes
+    }
+
+    pub fn set_attributes(&mut self, attributes: Attributes) {
+        self.program.set_used();
+        unsafe {
+            if attributes.camera_position != self.attributes.camera_position {
+                self.program
+                    .set_uniform_3f_arr("camera_position", attributes.camera_position);
+            }
+            if attributes.color != self.attributes.color {
+                self.program.set_uniform_3f_arr("color", attributes.color);
+            }
+            if attributes.model_size != self.attributes.model_size {
+                self.program
+                    .set_uniform_f("model_size", attributes.model_size);
+            }
+            if attributes.distance_shading_power != self.attributes.distance_shading_power {
+                self.program
+                    .set_uniform_f("distance_shading_power", attributes.distance_shading_power);
+            }
+            if attributes.distance_shading_constrict != self.attributes.distance_shading_constrict {
+                self.program.set_uniform_f(
+                    "distance_shading_constrict",
+                    attributes.distance_shading_constrict,
+                );
+            }
+            if attributes.toon_factor != self.attributes.toon_factor {
+                self.program
+                    .set_uniform_f("toon_factor", attributes.toon_factor);
+            }
+            if attributes.distance_shading_channel != self.attributes.distance_shading_channel {
+                self.program.set_uniform_ui(
+                    "distance_shading_channel",
+                    attributes.distance_shading_channel as u32,
+                )
+            }
+        }
+        self.program.unset_used();
+        self.attributes = attributes;
     }
 
     pub fn shader(&mut self) -> &mut Program {
