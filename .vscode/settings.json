@@ -1,8 +1,7 @@
 {
-    "rust-analyzer.procMacro.enable": false,
     "rust-analyzer.diagnostics.disabled": [
         // RA does not yet support const-generic function resolution used in NAlgebra.
         "mismatched-arg-count",
     ],
-    "rust-analyzer.inlayHints.enable": true,
+    "rust-analyzer.inlayHints.enable": false,
 }
