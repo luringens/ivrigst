@@ -147,7 +147,7 @@ fn main() {
         }
 
         if mvp_needs_update {
-            let aspect = viewport.size().1 as f32 / viewport.size().0 as f32;
+            let aspect = viewport.size().0 as f32 / viewport.size().1 as f32;
             let model_view_projection = camera.construct_mvp(aspect, model_isometry);
             let shader = model.shader();
             shader.set_used();
