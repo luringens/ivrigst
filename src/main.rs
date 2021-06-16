@@ -1,3 +1,5 @@
+#![allow(clippy::missing_safety_doc)]
+
 mod camera;
 mod model;
 pub mod render_gl;
@@ -23,7 +25,7 @@ fn main() {
     gl_attr.set_context_version(4, 1);
 
     let window = video_subsystem
-        .window("MedVis", 900, 900)
+        .window("MedVis", 1000, 1000)
         .opengl()
         .resizable()
         .build()
@@ -34,7 +36,7 @@ fn main() {
         gl::load_with(|s| video_subsystem.gl_get_proc_address(s) as *const std::os::raw::c_void);
 
     let mut model = Model::new(&res).expect("Failed to set up model.");
-    let ui = UI::new(&res).expect("Failed to set up UI.");
+    let mut ui = UI::new(&res).expect("Failed to set up UI.");
 
     // set up shared state for window
     let mut viewport =
@@ -48,22 +50,9 @@ fn main() {
     let mut camera = camera::Camera::new();
     camera.set_dist(model.get_size().magnitude() * 1.2);
 
-    unsafe {
-        gl::Enable(gl::DEPTH_TEST);
-        gl::DepthFunc(gl::LESS);
-    }
-
     render_gl::check_gl_error();
 
     let mut ctx = egui::CtxRef::default();
-    {
-        let mut raw_input: egui::RawInput = Default::default();
-        raw_input.screen_rect = Some(egui::Rect::from_min_size(
-            egui::Pos2::ZERO,
-            egui::vec2(window.size().0 as f32, window.size().1 as f32),
-        ));
-    }
-
     let mut ui_texture_needs_update = true;
     let mut mvp_needs_update = true;
     let mut event_pump = sdl.event_pump().unwrap();
@@ -125,8 +114,14 @@ fn main() {
         }
 
         // UI
+        if ui_texture_needs_update {
+            raw_input.screen_rect = Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(viewport.size().0 as f32, viewport.size().1 as f32),
+            ));
+        }
         ctx.begin_frame(raw_input);
-        egui::CentralPanel::default().show(&ctx, |ui| {
+        egui::Window::new("Configuration").show(&ctx, |ui| {
             ui.label("Hello world!");
             if ui.button("Click me").clicked() {
                 eprintln!("Clicky!")
@@ -135,39 +130,24 @@ fn main() {
         let (output, shapes) = ctx.end_frame();
         handle_output(output);
         let clipped_meshes: Vec<egui::ClippedMesh> = ctx.tessellate(shapes); // create triangles to paint
-
+        if ui_texture_needs_update {
+            let texture = ctx.texture();
+            ui.set_texture(texture.width as i32, texture.height as i32, &texture);
+            ui_texture_needs_update = false;
+        }
         color_buffer.clear();
 
+        model.render();
+
         // Paint
-        unsafe {
-            gl::Disable(gl::CULL_FACE);
-        }
-        for clipped_mesh in clipped_meshes.into_iter() {
-            let _rect = dbg!(clipped_mesh.0);
-            let indices = clipped_mesh.1.indices;
-            let vertices = clipped_mesh.1.vertices;
+        for egui::ClippedMesh(clip_rect, mesh) in clipped_meshes.into_iter() {
+            debug_assert!(mesh.is_valid());
 
-            if ui_texture_needs_update {
-                let texture = match clipped_mesh.1.texture_id {
-                    egui::TextureId::Egui => ctx.texture(),
-                    egui::TextureId::User(_) => unimplemented!(),
-                };
-                let pixels: Vec<u8> = texture
-                    .srgba_pixels()
-                    .flat_map(|c32| std::array::IntoIter::new([c32.r(), c32.g(), c32.b(), c32.a()]))
-                    .collect();
-
-                ui.set_texture(texture.width as i32, texture.height as i32, &pixels);
-                ui_texture_needs_update = false;
-            }
-            ui.render(&vertices, &indices, window.size());
+            ui.render(&mesh.vertices, &mesh.indices, clip_rect, viewport.size());
         }
-        // unsafe {
-        //     gl::Enable(gl::CULL_FACE);
-        // }
 
         if mvp_needs_update {
-            let aspect = window.size().1 as f32 / window.size().0 as f32;
+            let aspect = viewport.size().1 as f32 / viewport.size().0 as f32;
             let model_view_projection = camera.construct_mvp(aspect, model_isometry);
             let shader = model.shader();
             shader.set_used();
@@ -177,29 +157,21 @@ fn main() {
             mvp_needs_update = false;
         }
 
-        model.render();
         window.gl_swap_window();
         render_gl::check_gl_error();
+
+        // Update shaders if needed
+        for path in res.updated_paths() {
+            eprintln!("Path updated: {}", path.to_string_lossy());
+            model.check_shader_update(&path, &res);
+            ui.check_shader_update(&path, &res);
+        }
     }
 }
 
-fn handle_output(_output: egui::Output) -> () {
+fn handle_output(_output: egui::Output) {
     // Todo
 }
-
-// fn convert_screen_space_to_gl_coordinates(pos: &egui::Pos2, size: (u32, u32)) -> (f32, f32) {
-//     (
-//         pos.x / size.0 as f32 * 2.0 - 1.0,
-//         pos.y / size.1 as f32 * 2.0 - 1.0,
-//     )
-// }
-
-// fn convert_gl_coordinates_to_screen_space(x: f32, y: f32, size: (u32, u32)) -> (f32, f32) {
-//     (
-//         (x + 1.0) / 2.0 * size.0 as f32,
-//         (y + 1.0) / 2.0 * size.1 as f32,
-//     )
-// }
 
 fn sdl2_to_egui_pointerbutton(button: sdl2::mouse::MouseButton) -> egui::PointerButton {
     match button {

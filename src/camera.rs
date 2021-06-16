@@ -15,7 +15,7 @@ pub struct Camera {
 impl Camera {
     pub fn new() -> Self {
         Self {
-            fov: 3.14 / 4.0, // 45 degrees in radians,
+            fov: f32::consts::PI / 4.0, // 45 degrees in radians,
             mousedown: false,
             roll: 0.0,
             pitch: 0.0,

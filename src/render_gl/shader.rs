@@ -1,8 +1,6 @@
 use crate::resources::Resources;
 use anyhow::{anyhow, Context, Result};
-use gl;
 use nalgebra as na;
-use std;
 use std::ffi::{CStr, CString};
 
 pub struct Program {
@@ -74,7 +72,12 @@ impl Program {
         gl::UniformMatrix4fv(uniform_location, 1, gl::FALSE, data.as_ptr());
     }
 
-    pub unsafe fn set_uniform_f3(&self, uniform_id: &str, data: f32) {
+    pub unsafe fn set_uniform_2f(&self, uniform_id: &str, data: (f32, f32)) {
+        let uniform_location = self.get_uniform_location(uniform_id);
+        gl::Uniform2f(uniform_location, data.0, data.1);
+    }
+
+    pub unsafe fn set_uniform_f(&self, uniform_id: &str, data: f32) {
         let uniform_location = self.get_uniform_location(uniform_id);
         gl::Uniform1f(uniform_location, data);
     }
@@ -82,6 +85,12 @@ impl Program {
     unsafe fn get_uniform_location(&self, uniform_id: &str) -> gl::types::GLint {
         let uniform_id = CString::new(uniform_id).expect("Invalid uniform_id.");
         gl::GetUniformLocation(self.id, uniform_id.as_ptr())
+    }
+
+    pub fn unset_used(&self) {
+        unsafe {
+            gl::UseProgram(0);
+        }
     }
 
     pub fn set_used(&self) {

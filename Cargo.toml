@@ -15,6 +15,7 @@ render_gl_derive = { path = "render_gl_derive" }
 nalgebra = "0.27.1"
 tobj = "3.0.1"
 egui = "0.12.0"
+notify = "4.0.17"
 
 [build-dependencies]
 walkdir = "2.3.2"

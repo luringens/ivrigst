@@ -10,13 +10,16 @@ use anyhow::{Context, Result};
 use nalgebra as na;
 use render_gl_derive::VertexAttribPointers;
 
+const SHADER_PATH: &str = "shaders/triangle";
+const SHADER_NAME: &str = "triangle";
+
 #[derive(Copy, Clone, Debug, VertexAttribPointers)]
 #[repr(C, packed)]
-struct Vertex {
+pub struct Vertex {
     #[location = 0]
-    pos: data::f32_f32_f32,
+    pub pos: data::f32_f32_f32,
     #[location = 1]
-    normal: data::f32_f32_f32,
+    pub normal: data::f32_f32_f32,
 }
 
 pub struct Model {
@@ -31,7 +34,7 @@ pub struct Model {
 impl Model {
     pub fn new(res: &Resources) -> Result<Self> {
         // set up shader program
-        let program = render_gl::Program::from_res(res, "shaders/triangle")?;
+        let program = render_gl::Program::from_res(res, SHADER_PATH)?;
 
         let model = res
             .load_model("model.obj")
@@ -102,14 +105,31 @@ impl Model {
         self.ibo.bind();
 
         unsafe {
+            gl::Disable(gl::BLEND);
+            gl::Enable(gl::DEPTH_TEST);
+            gl::DepthFunc(gl::LESS);
+            gl::Enable(gl::CULL_FACE);
             gl::DrawElements(
                 gl::TRIANGLES,
                 self.indices,
                 gl::UNSIGNED_INT,
-                0 as *const std::ffi::c_void,
+                std::ptr::null::<std::ffi::c_void>(),
             );
         }
         self.ibo.unbind();
         self.vao.unbind();
+    }
+
+    pub fn check_shader_update(&mut self, path: &std::path::Path, res: &Resources) {
+        let path = path.file_stem().map(|p| p.to_string_lossy().to_string());
+        if path == Some(SHADER_NAME.to_string()) {
+            match render_gl::Program::from_res(res, SHADER_PATH) {
+                Ok(program) => {
+                    self.program.unset_used();
+                    self.program = program
+                }
+                Err(e) => eprintln!("Shader reload error: {}", e),
+            }
+        }
     }
 }

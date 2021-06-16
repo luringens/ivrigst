@@ -8,6 +8,9 @@ use crate::{
 use anyhow::Result;
 use render_gl_derive::VertexAttribPointers;
 
+const SHADER_PATH: &str = "shaders/egui";
+const SHADER_NAME: &str = "egui";
+
 #[derive(Copy, Clone, Debug, VertexAttribPointers)]
 #[repr(C, packed)]
 struct Vertex {
@@ -36,17 +39,17 @@ impl From<&egui::epaint::Vertex> for Vertex {
 }
 
 pub struct UI {
+    ibo: buffer::ElementArrayBuffer,
     program: render_gl::Program,
+    texture: buffer::Texture,
     vao: buffer::VertexArray,
     vbo: buffer::ArrayBuffer,
-    ibo: buffer::ElementArrayBuffer,
-    texture: buffer::Texture,
 }
 
 impl UI {
     pub fn new(res: &Resources) -> Result<Self> {
         // set up shader program
-        let program = render_gl::Program::from_res(res, "shaders/textured")?;
+        let program = render_gl::Program::from_res(res, SHADER_PATH)?;
 
         let vbo = buffer::ArrayBuffer::new();
         vbo.bind();
@@ -58,54 +61,91 @@ impl UI {
 
         // indices buffer
         let ibo = buffer::ElementArrayBuffer::new();
+        ibo.bind();
+
+        let texture = buffer::Texture::new();
+        texture.bind();
+        texture.unbind();
+        ibo.unbind();
         vao.unbind();
         vbo.unbind();
 
-        let texture = buffer::Texture::new();
-
         Ok(Self {
-            program,
-            vbo,
-            vao,
             ibo,
+            program,
             texture,
+            vao,
+            vbo,
         })
     }
 
-    pub fn set_texture(&self, width: i32, height: i32, pixels: &[u8]) {
-        self.texture.load_texture(width, height, pixels);
+    pub fn set_texture(&self, width: i32, height: i32, texture: &egui::Texture) {
+        self.texture.load_texture(width, height, texture);
     }
 
     pub fn render(
         &self,
         vertices: &[egui::epaint::Vertex],
         indices: &[u32],
+        _clip_rect: egui::Rect,
         window_size: (u32, u32),
     ) {
-        let vertices: Vec<Vertex> = vertices.into_iter().map(From::from).collect();
+        let vertices: Vec<Vertex> = vertices.iter().map(From::from).collect();
         self.program.set_used();
 
         self.vbo.bind();
         self.vbo.dynamic_draw_data(&vertices);
 
-        // set up vertex array object
         self.vao.bind();
-        Vertex::vertex_attrib_pointers();
-
-        // indices buffer
         self.ibo.bind();
         self.ibo.dynamic_draw_data(&indices);
 
+        self.texture.bind();
+
         unsafe {
+            // All UI elements have the same depth, so don't do depth testing
+            gl::Disable(gl::DEPTH_TEST);
+
+            self.program.set_uniform_2f(
+                "u_screen_size",
+                (window_size.0 as f32, window_size.1 as f32),
+            );
+
+            // egui has no consistent mesh normal direction
+            gl::Disable(gl::CULL_FACE);
+
+            // Pre-multiplied alpha.
+            gl::Enable(gl::BLEND);
+            gl::BlendFuncSeparate(
+                gl::ONE,
+                gl::ONE_MINUS_SRC_ALPHA,
+                gl::ONE_MINUS_DST_ALPHA,
+                gl::ONE,
+            );
             gl::DrawElements(
                 gl::TRIANGLES,
                 indices.len() as i32,
                 gl::UNSIGNED_INT,
-                0 as *const std::ffi::c_void,
+                std::ptr::null::<std::ffi::c_void>(),
             );
+            // Reset blending to default
         }
+        self.texture.unbind();
         self.ibo.unbind();
         self.vao.unbind();
         self.vbo.unbind();
+    }
+
+    pub fn check_shader_update(&mut self, path: &std::path::Path, res: &Resources) {
+        let path = path.file_stem().map(|p| p.to_string_lossy().to_string());
+        if path == Some(SHADER_NAME.to_string()) {
+            match render_gl::Program::from_res(res, SHADER_PATH) {
+                Ok(program) => {
+                    self.program.unset_used();
+                    self.program = program
+                }
+                Err(e) => eprintln!("Shader reload error: {}", e),
+            }
+        }
     }
 }

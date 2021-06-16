@@ -1,4 +1,3 @@
-use gl;
 use nalgebra as na;
 
 pub struct ColorBuffer {

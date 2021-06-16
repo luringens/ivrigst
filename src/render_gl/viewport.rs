@@ -1,5 +1,4 @@
-use gl;
-
+#[derive(Debug)]
 pub struct Viewport {
     pub x: i32,
     pub y: i32,
@@ -15,6 +14,10 @@ impl Viewport {
     pub fn update_size(&mut self, w: i32, h: i32) {
         self.w = w;
         self.h = h;
+    }
+
+    pub fn size(&self) -> (u32, u32) {
+        (self.w as u32, self.h as u32)
     }
 
     pub fn set_used(&self) {

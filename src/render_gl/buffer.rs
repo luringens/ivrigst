@@ -1,7 +1,5 @@
 #![allow(clippy::new_without_default)]
 
-use gl;
-
 pub type ArrayBuffer = Buffer<{ gl::ARRAY_BUFFER }>;
 pub type ElementArrayBuffer = Buffer<{ gl::ELEMENT_ARRAY_BUFFER }>;
 
@@ -110,25 +108,32 @@ impl Texture {
         Self { texture_id }
     }
 
-    pub fn load_texture(&self, width: i32, height: i32, pixels: &[u8]) {
+    pub fn load_texture(&self, width: i32, height: i32, texture: &egui::Texture) {
+        let pixels: Vec<u8> = texture
+            .pixels
+            .iter()
+            .map(|&a| egui::epaint::Color32::from_white_alpha(a).to_tuple())
+            .flat_map(|(r, g, b, a)| std::array::IntoIter::new([r, g, b, a]))
+            .collect();
+
         self.bind();
         unsafe {
             gl::TexImage2D(
                 gl::TEXTURE_2D, // Target
                 0,              // Level-of-detail number. 0 for no mip-map
-                gl::RGB as i32,
+                gl::SRGB8_ALPHA8 as i32,
                 width,
                 height,
                 0, // Must be zero lol.
-                gl::SRGB8_ALPHA8,
+                gl::RGBA,
                 gl::UNSIGNED_BYTE,
                 pixels.as_ptr() as *const std::ffi::c_void,
             );
 
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
         }
     }
 

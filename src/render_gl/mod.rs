@@ -11,6 +11,7 @@ pub use self::viewport::Viewport;
 /// Checks and prints OpenGL errors when compiled in debug mode.
 pub fn check_gl_error() {
     if cfg!(debug_assertions) {
+        let mut crash = false;
         loop {
             let err;
             unsafe {
@@ -20,9 +21,12 @@ pub fn check_gl_error() {
                 break;
             }
 
-            eprintln!("-------------");
             eprintln!("OpenGL Error:");
             eprintln!("{}", get_gl_error_string(err));
+            crash = true;
+        }
+        if crash {
+            panic!("Ending appliation");
         }
     }
 }
