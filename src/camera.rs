@@ -15,10 +15,10 @@ pub struct Camera {
 impl Camera {
     pub fn new() -> Self {
         Self {
-            fov: f32::consts::PI / 4.0, // 45 degrees in radians,
+            fov: f32::consts::PI / 4.0,
             mousedown: false,
             roll: 0.0,
-            pitch: 0.0,
+            pitch: f32::consts::PI / 4.0,
             dist: 5.0,
         }
     }
@@ -46,9 +46,10 @@ impl Camera {
         self.mousedown = false;
     }
 
-    pub fn mousemove(&mut self, xrel: i32, yrel: i32) {
+    /// Mouse movement handler. Returns true if camera view has changed.
+    pub fn mousemove(&mut self, xrel: i32, yrel: i32) -> bool {
         if !self.mousedown {
-            return;
+            return false;
         }
 
         self.pitch = (self.pitch + f32::consts::TAU / 500.0 * -xrel as f32) % f32::consts::TAU;
@@ -56,6 +57,8 @@ impl Camera {
             -f32::consts::PI / 2.0 + 0.001,
             f32::consts::PI / 2.0 - 0.001,
         );
+
+        return true;
     }
 
     pub fn mousewheel(&mut self, y: i32) {

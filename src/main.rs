@@ -4,11 +4,15 @@ mod camera;
 mod model;
 pub mod render_gl;
 pub mod resources;
+mod sdl2_egui_translation;
 mod ui;
 
-use crate::resources::Resources;
+use crate::{resources::Resources, sdl2_egui_translation::egui_to_sdl2_cursor};
+use anyhow::{anyhow, Result};
 use model::Model;
 use nalgebra as na;
+use sdl2::event::Event;
+use sdl2_egui_translation::*;
 use std::path::Path;
 use ui::UI;
 
@@ -52,16 +56,17 @@ fn main() {
 
     render_gl::check_gl_error();
 
+    let mut cursor: sdl2::mouse::Cursor;
     let mut ctx = egui::CtxRef::default();
-    let mut ui_texture_needs_update = true;
+    let mut first_frame = true;
     let mut mvp_needs_update = true;
     let mut event_pump = sdl.event_pump().unwrap();
     'main: loop {
         let mut raw_input: egui::RawInput = Default::default();
         for event in event_pump.poll_iter() {
             match event {
-                sdl2::event::Event::Quit { .. } => break 'main,
-                sdl2::event::Event::Window {
+                Event::Quit { .. } => break 'main,
+                Event::Window {
                     win_event: sdl2::event::WindowEvent::Resized(w, h),
                     ..
                 } => {
@@ -73,7 +78,7 @@ fn main() {
                         egui::vec2(w as f32, h as f32),
                     ));
                 }
-                sdl2::event::Event::MouseButtonDown {
+                Event::MouseButtonDown {
                     mouse_btn, x, y, ..
                 } => {
                     camera.mousedown();
@@ -84,7 +89,7 @@ fn main() {
                         modifiers: Default::default(),
                     })
                 }
-                sdl2::event::Event::MouseButtonUp {
+                Event::MouseButtonUp {
                     mouse_btn, x, y, ..
                 } => {
                     camera.mouseup();
@@ -95,111 +100,70 @@ fn main() {
                         modifiers: Default::default(),
                     })
                 }
-                sdl2::event::Event::MouseMotion {
+                Event::MouseMotion {
                     xrel, yrel, x, y, ..
                 } => {
-                    camera.mousemove(xrel, yrel);
                     raw_input
                         .events
                         .push(egui::Event::PointerMoved(egui::pos2(x as f32, y as f32)));
-                    mvp_needs_update = true;
+
+                    if !ctx.wants_pointer_input() {
+                        let view_updated = camera.mousemove(xrel, yrel);
+                        mvp_needs_update = mvp_needs_update || view_updated;
+                    }
                 }
-                sdl2::event::Event::MouseWheel { y, .. } => {
+                Event::MouseWheel { y, .. } => {
                     camera.mousewheel(y);
                     raw_input.scroll_delta[1] += y as f32;
                     mvp_needs_update = true;
+                }
+                Event::KeyDown {
+                    keycode: Some(keycode),
+                    keymod,
+                    ..
+                } => {
+                    if let Some(event) = sdl2_to_egui_key(keycode, keymod, true) {
+                        raw_input.events.push(event);
+                    }
+                    if let Some(event) = sdl2_to_egui_text(keycode, keymod) {
+                        raw_input.events.push(event);
+                    }
+                }
+                Event::KeyUp {
+                    keycode: Some(keycode),
+                    keymod,
+                    ..
+                } => {
+                    if let Some(event) = sdl2_to_egui_key(keycode, keymod, false) {
+                        raw_input.events.push(event);
+                    }
                 }
                 _ => {}
             }
         }
 
-        // UI
-        if ui_texture_needs_update {
-            raw_input.screen_rect = Some(egui::Rect::from_min_size(
-                egui::Pos2::ZERO,
-                egui::vec2(viewport.size().0 as f32, viewport.size().1 as f32),
-            ));
-        }
+        // UI handling
         ctx.begin_frame(raw_input);
-        egui::Window::new("Settings").show(&ctx, |ui| {
-            let mut attr = model.get_attributes().clone();
-
-            // Colour widget.
-            ui.horizontal(|ui| {
-                ui.label("Model base colour");
-                ui.color_edit_button_rgb(&mut attr.color);
-            });
-
-            // Toon shading enable/disable
-            ui.horizontal(|ui| {
-                ui.label("Toon shading factor");
-                ui.add(egui::Slider::new(&mut attr.toon_factor, 0.0..=1.0));
-            });
-
-            // Distance shading parameters widget.
-            ui.vertical(|ui| {
-                use crate::model::DistanceShadingChannel as DSC;
-                egui::ComboBox::from_label("Distance shading channel")
-                    .selected_text(format!("{:?}", attr.distance_shading_channel)) // Todo: fix
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(
-                            &mut attr.distance_shading_channel,
-                            DSC::Hue,
-                            format!("{:?}", DSC::Hue),
-                        );
-                        ui.selectable_value(
-                            &mut attr.distance_shading_channel,
-                            DSC::Saturation,
-                            format!("{:?}", DSC::Saturation),
-                        );
-                        ui.selectable_value(
-                            &mut attr.distance_shading_channel,
-                            DSC::Value,
-                            format!("{:?}", DSC::Value),
-                        );
-                        ui.selectable_value(
-                            &mut attr.distance_shading_channel,
-                            DSC::None,
-                            format!("{:?}", DSC::None),
-                        );
-                    });
-                ui.horizontal(|ui| {
-                    ui.label("Distance shading constriction");
-                    ui.add(egui::Slider::new(
-                        &mut attr.distance_shading_constrict,
-                        0.0..=1.0,
-                    ));
-                });
-                ui.horizontal(|ui| {
-                    ui.label("Distance shading power");
-                    ui.add(egui::Slider::new(
-                        &mut attr.distance_shading_power,
-                        0.0..=1.0,
-                    ));
-                });
-            });
-
-            model.set_attributes(attr);
-        });
+        build_ui(&ctx, &mut model);
         let (output, shapes) = ctx.end_frame();
-        handle_output(output);
-        let clipped_meshes: Vec<egui::ClippedMesh> = ctx.tessellate(shapes); // create triangles to paint
-        if ui_texture_needs_update {
-            let texture = ctx.texture();
-            ui.set_texture(texture.width as i32, texture.height as i32, &texture);
-            ui_texture_needs_update = false;
+        let clipped_meshes: Vec<egui::ClippedMesh> = ctx.tessellate(shapes);
+
+        // Handle egui output - clipboard events, changing cursor, etc.
+        match handle_output(output) {
+            Ok(c) => {
+                // Unsets when dropped, so we need to store a reference to it outside the loop.
+                cursor = c;
+                cursor.set();
+            }
+            Err(e) => {
+                eprintln!("egui output handling error:");
+                eprintln!("{}", e);
+            }
         }
+
         color_buffer.clear();
 
-        model.render();
-
-        // Paint
-        for egui::ClippedMesh(clip_rect, mesh) in clipped_meshes.into_iter() {
-            debug_assert!(mesh.is_valid());
-
-            ui.render(&mesh.vertices, &mesh.indices, clip_rect, viewport.size());
-        }
-
+        // Update camera if necessary.
         if mvp_needs_update {
             let aspect = viewport.size().0 as f32 / viewport.size().1 as f32;
             let model_view_projection = camera.construct_mvp(aspect, model_isometry);
@@ -212,6 +176,21 @@ fn main() {
                 shader.set_uniform_3f("camera_position", camera_position);
             }
             mvp_needs_update = false;
+        }
+        model.render();
+
+        // The egui texture isn't available until one frame has passed, so we've got to do it here.
+        if first_frame {
+            let texture = ctx.texture();
+            ui.set_texture(texture.width as i32, texture.height as i32, &texture);
+            first_frame = false;
+        }
+
+        // Render the UI
+        for egui::ClippedMesh(clip_rect, mesh) in clipped_meshes.into_iter() {
+            debug_assert!(mesh.is_valid());
+
+            ui.render(&mesh.vertices, &mesh.indices, clip_rect, viewport.size());
         }
 
         window.gl_swap_window();
@@ -226,15 +205,99 @@ fn main() {
     }
 }
 
-fn handle_output(_output: egui::Output) {
-    // Todo
+fn build_ui(ctx: &egui::CtxRef, model: &mut Model) {
+    egui::Window::new("Settings")
+        .auto_sized()
+        .collapsible(true)
+        .show(ctx, |ui| {
+            egui::Grid::new("settings_grid")
+                .striped(true)
+                .spacing([40.0, 4.0])
+                .show(ui, |ui| {
+                    let mut attr = model.get_attributes().clone();
+
+                    // Colour widget.
+                    ui.label("Model base colour");
+                    ui.color_edit_button_rgb(&mut attr.color);
+                    ui.end_row();
+
+                    // Toon shading enable/disable
+                    ui.label("Toon shading factor");
+                    ui.add(egui::Slider::new(&mut attr.toon_factor, 0.0..=1.0));
+                    ui.end_row();
+
+                    // ui.separator();
+
+                    // Distance shading parameters widget.
+                    use crate::model::DistanceShadingChannel as DSC;
+                    ui.label("Distance shading channel");
+                    egui::ComboBox::from_id_source("distance_shading_channel")
+                        .selected_text(format!("{:?}", attr.distance_shading_channel)) // Todo: fix
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(
+                                &mut attr.distance_shading_channel,
+                                DSC::Hue,
+                                format!("{:?}", DSC::Hue),
+                            );
+                            ui.selectable_value(
+                                &mut attr.distance_shading_channel,
+                                DSC::Saturation,
+                                format!("{:?}", DSC::Saturation),
+                            );
+                            ui.selectable_value(
+                                &mut attr.distance_shading_channel,
+                                DSC::Value,
+                                format!("{:?}", DSC::Value),
+                            );
+                            ui.selectable_value(
+                                &mut attr.distance_shading_channel,
+                                DSC::None,
+                                format!("{:?}", DSC::None),
+                            );
+                        });
+                    ui.end_row();
+
+                    ui.label("Distance shading constriction");
+                    ui.add(egui::Slider::new(
+                        &mut attr.distance_shading_constrict,
+                        0.0..=1.0,
+                    ));
+                    ui.end_row();
+
+                    ui.label("Distance shading power");
+                    ui.add(egui::Slider::new(
+                        &mut attr.distance_shading_power,
+                        0.0..=1.0,
+                    ));
+                    ui.end_row();
+
+                    model.set_attributes(attr);
+                });
+            // ui.separator();
+            ui.horizontal(|ui| {
+                ui.label("Read more at:");
+                ui.add(egui::Hyperlink::new("https://github.com/stisol/rmedvis"));
+            });
+        });
 }
 
-fn sdl2_to_egui_pointerbutton(button: sdl2::mouse::MouseButton) -> egui::PointerButton {
-    match button {
-        sdl2::mouse::MouseButton::Left => egui::PointerButton::Primary,
-        sdl2::mouse::MouseButton::Right => egui::PointerButton::Secondary,
-        sdl2::mouse::MouseButton::Middle => egui::PointerButton::Middle,
-        _ => egui::PointerButton::Middle,
+fn handle_output(output: egui::Output) -> Result<sdl2::mouse::Cursor> {
+    let system_cursor = egui_to_sdl2_cursor(output.cursor_icon);
+    let cursor = sdl2::mouse::Cursor::from_system(system_cursor).map_err(|e| anyhow!(e))?;
+
+    if !output.copied_text.is_empty() {
+        use clipboard::{ClipboardContext, ClipboardProvider};
+        let mut ctx: ClipboardContext =
+            ClipboardProvider::new().map_err(|_| anyhow!("Could not open clipboard."))?;
+        ctx.set_contents(output.copied_text)
+            .map_err(|_| anyhow!("Could not set clipboard text."))?;
     }
+
+    if let Some(url) = output.open_url {
+        if let Err(e) = webbrowser::open(&url.url) {
+            eprintln!("Error opening link: {}", e);
+        }
+    }
+
+    Ok(cursor)
 }
