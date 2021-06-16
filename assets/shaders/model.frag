@@ -95,6 +95,8 @@ void main() {
     float far_plane = camera_dist + model_size / 2.0 * distance_shading_constrict;
 
     float power = distance_shading_power;
+
+    // For the Hue channel, it does not make sense to restrict available colour space.
     if (distance_shading_channel == DSC_HUE) {
         power = 1.0;
     }

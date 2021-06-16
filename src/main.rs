@@ -265,10 +265,14 @@ fn build_ui(ctx: &egui::CtxRef, model: &mut Model) {
                     ui.end_row();
 
                     ui.label("Distance shading power");
-                    ui.add(egui::Slider::new(
-                        &mut attr.distance_shading_power,
-                        0.0..=1.0,
-                    ));
+                    ui.scope(|ui| {
+                        ui.set_enabled(attr.distance_shading_channel != DSC::Hue);
+                        ui.add(egui::Slider::new(
+                            &mut attr.distance_shading_power,
+                            0.0..=1.0,
+                        ))
+                        .on_disabled_hover_text("Not used when channel is set to Hue.");
+                    });
                     ui.end_row();
 
                     model.set_attributes(attr);
