@@ -173,7 +173,7 @@ fn main() {
             let aspect = viewport.size().0 as f32 / viewport.size().1 as f32;
             let model_view_projection = camera.construct_mvp(aspect, model_isometry);
             let c = camera.position();
-            attr.camera_position = [c[0], c[1], c[2]];
+            attr.camera_position = na::Vector3::new(c[0], c[1], c[2]);
             attr.projection_matrix = model_view_projection;
             model.set_attributes(attr);
             mvp_needs_update = false;
@@ -219,15 +219,16 @@ fn build_ui(ctx: &egui::CtxRef, model: &mut Model) {
 
                     // Colour widget.
                     ui.label("Model base colour");
-                    ui.color_edit_button_rgb(&mut attr.color);
+                    let mut color = [attr.color[0], attr.color[1], attr.color[2]];
+                    ui.color_edit_button_rgb(&mut color);
+                    attr.color = na::Vector3::from(color);
+
                     ui.end_row();
 
                     // Toon shading enable/disable
                     ui.label("Toon shading factor");
                     ui.add(egui::Slider::new(&mut attr.toon_factor, 0.0..=1.0));
                     ui.end_row();
-
-                    // ui.separator();
 
                     // Distance shading parameters widget.
                     use crate::model::DistanceShadingChannel as DSC;
@@ -278,7 +279,7 @@ fn build_ui(ctx: &egui::CtxRef, model: &mut Model) {
 
                     model.set_attributes(attr);
                 });
-            // ui.separator();
+
             ui.horizontal(|ui| {
                 ui.label("Read more at:");
                 ui.add(egui::Hyperlink::new("https://github.com/stisol/rmedvis"));

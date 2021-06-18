@@ -24,9 +24,8 @@ impl Camera {
     }
 
     pub fn position(&self) -> Point3<f32> {
-        let rot1 = na::Rotation3::from_euler_angles(self.roll, 0.0, 0.0);
-        let rot2 = na::Rotation3::from_euler_angles(0.0, self.pitch, 0.0);
-        let rotated = rot2 * rot1 * na::Vector3::z();
+        let rot = na::Rotation3::from_euler_angles(self.roll, self.pitch, 0.0);
+        let rotated = rot * na::Vector3::z();
         Point3::from(rotated) * self.dist
     }
 
@@ -58,7 +57,7 @@ impl Camera {
             f32::consts::PI / 2.0 - 0.001,
         );
 
-        return true;
+        true
     }
 
     pub fn mousewheel(&mut self, y: i32) {

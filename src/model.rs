@@ -33,8 +33,8 @@ pub enum DistanceShadingChannel {
 #[derive(Debug, Clone)]
 pub struct Attributes {
     pub projection_matrix: na::Matrix4<f32>,
-    pub camera_position: [f32; 3],
-    pub color: [f32; 3],
+    pub camera_position: na::Vector3<f32>,
+    pub color: na::Vector3<f32>,
     pub model_size: f32,
     pub distance_shading_power: f32,
     pub distance_shading_constrict: f32,
@@ -47,7 +47,7 @@ impl Default for Attributes {
         Self {
             projection_matrix: Default::default(),
             camera_position: Default::default(),
-            color: [1.0, 0.56, 0.72],
+            color: na::Vector3::new(1.0, 0.56, 0.72),
             model_size: Default::default(),
             distance_shading_power: 0.8,
             distance_shading_constrict: 0.2,
@@ -144,47 +144,46 @@ impl Model {
         &self.attributes
     }
 
-    pub fn set_attributes(&mut self, attributes: Attributes) {
+    pub fn set_attributes(&mut self, new: Attributes) {
+        let old = &self.attributes;
         self.program.set_used();
         unsafe {
-            if attributes.projection_matrix != self.attributes.projection_matrix {
+            if new.projection_matrix != old.projection_matrix {
                 self.program
-                    .set_uniform_matrix4("projection_matrix", attributes.projection_matrix);
+                    .set_uniform_matrix4("projection_matrix", new.projection_matrix);
             }
-            if attributes.camera_position != self.attributes.camera_position {
+            if new.camera_position != old.camera_position {
                 self.program
-                    .set_uniform_3f_arr("camera_position", attributes.camera_position);
+                    .set_uniform_3f_na("camera_position", new.camera_position);
             }
-            if attributes.color != self.attributes.color {
-                self.program.set_uniform_3f_arr("color", attributes.color);
+            if new.color != old.color {
+                self.program.set_uniform_3f_na("color", new.color);
             }
-            if attributes.model_size != self.attributes.model_size {
+            if (new.model_size - old.model_size).abs() < f32::EPSILON {
+                self.program.set_uniform_f("model_size", new.model_size);
+            }
+            if (new.distance_shading_power - old.distance_shading_power).abs() < f32::EPSILON {
                 self.program
-                    .set_uniform_f("model_size", attributes.model_size);
+                    .set_uniform_f("distance_shading_power", new.distance_shading_power);
             }
-            if attributes.distance_shading_power != self.attributes.distance_shading_power {
+            if (new.distance_shading_constrict - old.distance_shading_constrict).abs()
+                < f32::EPSILON
+            {
                 self.program
-                    .set_uniform_f("distance_shading_power", attributes.distance_shading_power);
+                    .set_uniform_f("distance_shading_constrict", new.distance_shading_constrict);
             }
-            if attributes.distance_shading_constrict != self.attributes.distance_shading_constrict {
-                self.program.set_uniform_f(
-                    "distance_shading_constrict",
-                    attributes.distance_shading_constrict,
-                );
+            if (new.toon_factor - old.toon_factor).abs() < f32::EPSILON {
+                self.program.set_uniform_f("toon_factor", new.toon_factor);
             }
-            if attributes.toon_factor != self.attributes.toon_factor {
-                self.program
-                    .set_uniform_f("toon_factor", attributes.toon_factor);
-            }
-            if attributes.distance_shading_channel != self.attributes.distance_shading_channel {
+            if new.distance_shading_channel != old.distance_shading_channel {
                 self.program.set_uniform_ui(
                     "distance_shading_channel",
-                    attributes.distance_shading_channel as u32,
+                    new.distance_shading_channel as u32,
                 )
             }
         }
         self.program.unset_used();
-        self.attributes = attributes;
+        self.attributes = new;
     }
 
     pub fn get_size(&self) -> &na::Vector3<f32> {
@@ -223,8 +222,8 @@ impl Model {
                     let attr = &self.attributes;
                     unsafe {
                         program.set_uniform_matrix4("projection_matrix", attr.projection_matrix);
-                        program.set_uniform_3f_arr("camera_position", attr.camera_position);
-                        program.set_uniform_3f_arr("color", attr.color);
+                        program.set_uniform_3f_na("camera_position", attr.camera_position);
+                        program.set_uniform_3f_na("color", attr.color);
                         program.set_uniform_f("model_size", attr.model_size);
                         program
                             .set_uniform_f("distance_shading_power", attr.distance_shading_power);

@@ -72,6 +72,10 @@ impl Program {
         gl::UniformMatrix4fv(uniform_location, 1, gl::FALSE, data.as_ptr());
     }
 
+    pub unsafe fn set_uniform_3f_na(&self, uniform_id: &str, v: na::Vector3<f32>) {
+        self.set_uniform_3f(uniform_id, (v[0], v[1], v[2]))
+    }
+
     pub unsafe fn set_uniform_3f_arr(&self, uniform_id: &str, [f0, f1, f2]: [f32; 3]) {
         self.set_uniform_3f(uniform_id, (f0, f1, f2))
     }
