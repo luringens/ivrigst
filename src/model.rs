@@ -2,7 +2,6 @@ use crate::{
     render_gl::{
         self, buffer,
         data::{self, f32_f32_f32},
-        Program,
     },
     resources::Resources,
 };
@@ -33,6 +32,7 @@ pub enum DistanceShadingChannel {
 
 #[derive(Debug, Clone)]
 pub struct Attributes {
+    pub projection_matrix: na::Matrix4<f32>,
     pub camera_position: [f32; 3],
     pub color: [f32; 3],
     pub model_size: f32,
@@ -45,6 +45,7 @@ pub struct Attributes {
 impl Default for Attributes {
     fn default() -> Self {
         Self {
+            projection_matrix: Default::default(),
             camera_position: Default::default(),
             color: [1.0, 0.56, 0.72],
             model_size: Default::default(),
@@ -146,6 +147,10 @@ impl Model {
     pub fn set_attributes(&mut self, attributes: Attributes) {
         self.program.set_used();
         unsafe {
+            if attributes.projection_matrix != self.attributes.projection_matrix {
+                self.program
+                    .set_uniform_matrix4("projection_matrix", attributes.projection_matrix);
+            }
             if attributes.camera_position != self.attributes.camera_position {
                 self.program
                     .set_uniform_3f_arr("camera_position", attributes.camera_position);
@@ -182,10 +187,6 @@ impl Model {
         self.attributes = attributes;
     }
 
-    pub fn shader(&mut self) -> &mut Program {
-        &mut self.program
-    }
-
     pub fn get_size(&self) -> &na::Vector3<f32> {
         &self.size
     }
@@ -211,16 +212,39 @@ impl Model {
         self.vao.unbind();
     }
 
-    pub fn check_shader_update(&mut self, path: &std::path::Path, res: &Resources) {
+    pub fn check_shader_update(&mut self, path: &std::path::Path, res: &Resources) -> bool {
         let path = path.file_stem().map(|p| p.to_string_lossy().to_string());
         if path == Some(SHADER_NAME.to_string()) {
             match render_gl::Program::from_res(res, SHADER_PATH) {
                 Ok(program) => {
                     self.program.unset_used();
-                    self.program = program
+
+                    program.set_used();
+                    let attr = &self.attributes;
+                    unsafe {
+                        program.set_uniform_matrix4("projection_matrix", attr.projection_matrix);
+                        program.set_uniform_3f_arr("camera_position", attr.camera_position);
+                        program.set_uniform_3f_arr("color", attr.color);
+                        program.set_uniform_f("model_size", attr.model_size);
+                        program
+                            .set_uniform_f("distance_shading_power", attr.distance_shading_power);
+                        program.set_uniform_f(
+                            "distance_shading_constrict",
+                            attr.distance_shading_constrict,
+                        );
+                        program.set_uniform_f("toon_factor", attr.toon_factor);
+                        program.set_uniform_ui(
+                            "distance_shading_channel",
+                            attr.distance_shading_channel as u32,
+                        )
+                    }
+                    program.unset_used();
+                    self.program = program;
+                    return true;
                 }
                 Err(e) => eprintln!("Shader reload error: {}", e),
             }
         }
+        false
     }
 }

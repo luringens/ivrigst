@@ -14,9 +14,14 @@ use std::path::Path;
 
 use crate::{model::Model, resources::Resources, sdl2_egui_translation::*, ui::UI};
 
+#[cfg(debug_assertions)]
+const ASSETS_PATH: &str = "..\\..\\assets";
+#[cfg(not(debug_assertions))]
+const ASSETS_PATH: &str = "assets";
+
 fn main() {
     let res =
-        Resources::from_relative_exe_path(Path::new("assets")).expect("Failed to find assets");
+        Resources::from_relative_exe_path(Path::new(ASSETS_PATH)).expect("Failed to find assets");
 
     let sdl = sdl2::init().unwrap();
     let video_subsystem = sdl.video().unwrap();
@@ -163,16 +168,14 @@ fn main() {
 
         // Update camera if necessary.
         if mvp_needs_update {
+            let mut attr = model.get_attributes().clone();
+
             let aspect = viewport.size().0 as f32 / viewport.size().1 as f32;
             let model_view_projection = camera.construct_mvp(aspect, model_isometry);
             let c = camera.position();
-            let camera_position = (c[0], c[1], c[2]);
-            let shader = model.shader();
-            shader.set_used();
-            unsafe {
-                shader.set_uniform_matrix4("projection_matrix", model_view_projection);
-                shader.set_uniform_3f("camera_position", camera_position);
-            }
+            attr.camera_position = [c[0], c[1], c[2]];
+            attr.projection_matrix = model_view_projection;
+            model.set_attributes(attr);
             mvp_needs_update = false;
         }
         model.render();
