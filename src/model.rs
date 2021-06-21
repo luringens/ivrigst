@@ -104,6 +104,7 @@ impl Model {
             max[2] = max[2].max(pos[2]);
         }
         let center = min + (max - min) / 2.0;
+        let model_size = (max - min).magnitude();
 
         let vertices: Vec<Vertex> = model
             .positions
@@ -134,19 +135,6 @@ impl Model {
         vbo.unbind();
         vao.unbind();
 
-        unsafe {
-            program.set_used();
-            program.set_uniform_3f("camera_position", (10.0, 0.0, 0.0));
-            program.set_uniform_3f("color", (0.9, 0.5, 0.9));
-            program.set_uniform_f("model_size", 100.0);
-            program.set_uniform_f("distance_shading_power", 0.5);
-            program.set_uniform_f("distance_shading_constrict", 1.0);
-            program.set_uniform_f("toon_factor", 0.5);
-            program.set_uniform_ui("shadows", 1);
-            program.unset_used();
-            render_gl::check_gl_error();
-        }
-
         // Shadowstuff
         let shadow_program = render_gl::Program::from_res(res, "shaders/shadow")?;
         shadow_program.set_used();
@@ -168,7 +156,12 @@ impl Model {
         depth_map_fbo.bind_texture(gl::DEPTH_ATTACHMENT, &depth_map);
         depth_map_fbo.unbind();
 
-        Ok(Self {
+        let attributes = Attributes {
+            model_size,
+            ..Default::default()
+        };
+
+        let value = Self {
             program,
             shadow_program,
             _vbo: vbo,
@@ -176,10 +169,12 @@ impl Model {
             ibo,
             indices: model.indices.len() as i32,
             size: max - min,
-            attributes: Default::default(),
+            attributes,
             depth_map,
             depth_map_fbo,
-        })
+        };
+        value.reset_all_attributes();
+        Ok(value)
     }
 
     pub fn get_attributes(&self) -> &Attributes {
@@ -229,6 +224,31 @@ impl Model {
         }
         self.program.unset_used();
         self.attributes = new;
+    }
+
+    pub fn reset_all_attributes(&self) {
+        self.program.set_used();
+        let att = &self.attributes;
+        unsafe {
+            self.program
+                .set_uniform_matrix4("projection_matrix", &att.projection_matrix);
+
+            self.program
+                .set_uniform_3f_na("camera_position", att.camera_position);
+            self.program.set_uniform_3f_na("color", att.color);
+            self.program.set_uniform_f("model_size", att.model_size);
+            self.program
+                .set_uniform_f("distance_shading_power", att.distance_shading_power);
+            self.program
+                .set_uniform_f("distance_shading_constrict", att.distance_shading_constrict);
+            self.program.set_uniform_f("toon_factor", att.toon_factor);
+            self.program.set_uniform_ui(
+                "distance_shading_channel",
+                att.distance_shading_channel as u32,
+            );
+            self.program.set_uniform_ui("shadows", att.shadows as u32)
+        }
+        self.program.unset_used();
     }
 
     pub fn get_size(&self) -> &na::Vector3<f32> {
@@ -324,29 +344,8 @@ impl Model {
             match render_gl::Program::from_res(res, SHADER_PATH) {
                 Ok(program) => {
                     self.program.unset_used();
-
-                    program.set_used();
-                    let attr = &self.attributes;
-                    unsafe {
-                        program.set_uniform_matrix4("projection_matrix", &attr.projection_matrix);
-                        program.set_uniform_3f_na("camera_position", attr.camera_position);
-                        program.set_uniform_3f_na("color", attr.color);
-                        program.set_uniform_f("model_size", attr.model_size);
-                        program
-                            .set_uniform_f("distance_shading_power", attr.distance_shading_power);
-                        program.set_uniform_f(
-                            "distance_shading_constrict",
-                            attr.distance_shading_constrict,
-                        );
-                        program.set_uniform_f("toon_factor", attr.toon_factor);
-                        program.set_uniform_ui(
-                            "distance_shading_channel",
-                            attr.distance_shading_channel as u32,
-                        );
-                        self.program.set_uniform_ui("shadows", attr.shadows as u32);
-                    }
-                    program.unset_used();
                     self.program = program;
+                    self.reset_all_attributes();
                     return true;
                 }
                 Err(e) => eprintln!("Shader reload error: {}", e),
