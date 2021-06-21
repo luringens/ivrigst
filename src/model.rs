@@ -11,8 +11,8 @@ use nalgebra as na;
 use nalgebra_glm as glm;
 use render_gl_derive::VertexAttribPointers;
 
-const SHADER_PATH: &str = "shaders/texrender";
-const SHADER_NAME: &str = "texrender";
+const SHADER_PATH: &str = "shaders/model";
+const SHADER_NAME: &str = "model";
 const SHADOW_WIDTH: gl::types::GLsizei = 1024;
 const SHADOW_HEIGHT: gl::types::GLsizei = 1024;
 
@@ -23,13 +23,6 @@ pub struct Vertex {
     pub pos: data::f32_f32_f32,
     #[location = 1]
     pub normal: data::f32_f32_f32,
-}
-
-#[derive(Copy, Clone, Debug, VertexAttribPointers)]
-#[repr(C, packed)]
-pub struct SVertex {
-    #[location = 0]
-    pub pos: data::f32_f32_f32,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -45,12 +38,14 @@ pub enum DistanceShadingChannel {
 pub struct Attributes {
     pub projection_matrix: na::Matrix4<f32>,
     pub camera_position: na::Vector3<f32>,
+    pub light_position: na::Vector3<f32>,
     pub color: na::Vector3<f32>,
     pub model_size: f32,
     pub distance_shading_power: f32,
     pub distance_shading_constrict: f32,
     pub toon_factor: f32,
     pub distance_shading_channel: DistanceShadingChannel,
+    pub shadows: bool,
 }
 
 impl Default for Attributes {
@@ -58,12 +53,14 @@ impl Default for Attributes {
         Self {
             projection_matrix: Default::default(),
             camera_position: Default::default(),
+            light_position: na::Vector3::new(0.45, 0.25, -0.6),
             color: na::Vector3::new(1.0, 0.56, 0.72),
             model_size: Default::default(),
             distance_shading_power: 0.8,
             distance_shading_constrict: 0.2,
             toon_factor: 0.8,
             distance_shading_channel: DistanceShadingChannel::None,
+            shadows: true,
         }
     }
 }
@@ -73,8 +70,6 @@ pub struct Model {
     shadow_program: render_gl::Program,
     vao: buffer::VertexArray,
     _vbo: buffer::ArrayBuffer,
-    svao: buffer::VertexArray,
-    _svbo: buffer::ArrayBuffer,
     ibo: buffer::ElementArrayBuffer,
     indices: i32,
     size: na::Vector3<f32>,
@@ -86,8 +81,8 @@ pub struct Model {
 impl Model {
     pub fn new(res: &Resources) -> Result<Self> {
         // set up shader program
-        let program = render_gl::Program::from_res(res, "shaders/texrender")?;
-        
+        let program = render_gl::Program::from_res(res, SHADER_PATH)?;
+
         let model = res
             .load_model("model.obj")
             .context("Failed to load model.")?;
@@ -134,21 +129,20 @@ impl Model {
         vao.unbind();
 
         unsafe {
-            // program.set_used();
-            // program.set_uniform_3f("camera_position", (10.0, 0.0, 0.0));
-            // program.set_uniform_3f("color", (0.9, 0.5, 0.9));
-            // program.set_uniform_f("model_size", 100.0);
-            // program.set_uniform_f("distance_shading_power", 0.5);
-            // program.set_uniform_f("distance_shading_constrict", 1.0);
-            // program.set_uniform_f("toon_factor", 0.5);
-            // program.unset_used();
+            program.set_used();
+            program.set_uniform_3f("camera_position", (10.0, 0.0, 0.0));
+            program.set_uniform_3f("color", (0.9, 0.5, 0.9));
+            program.set_uniform_f("model_size", 100.0);
+            program.set_uniform_f("distance_shading_power", 0.5);
+            program.set_uniform_f("distance_shading_constrict", 1.0);
+            program.set_uniform_f("toon_factor", 0.5);
+            program.set_uniform_ui("shadows", 1);
+            program.unset_used();
             render_gl::check_gl_error();
         }
 
         // Shadowstuff
         let shadow_program;
-        let svbo;
-        let svao;
         let mut depth_map = 0;
         let mut depth_map_fbo = 0;
         unsafe {
@@ -173,36 +167,22 @@ impl Model {
             #[rustfmt::skip]
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as gl::types::GLint);
             #[rustfmt::skip]
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as gl::types::GLint);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_BORDER as gl::types::GLint);
             #[rustfmt::skip]
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as gl::types::GLint);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_BORDER as gl::types::GLint);
+            let border_color = [1.0, 1.0, 1.0, 1.0];
+            gl::TexParameterfv(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_BORDER_COLOR,
+                border_color.as_ptr(),
+            );
+
             gl::BindFramebuffer(gl::FRAMEBUFFER, depth_map_fbo);
             #[rustfmt::skip]
             gl::FramebufferTexture2D(gl::FRAMEBUFFER, gl::DEPTH_ATTACHMENT, gl::TEXTURE_2D, depth_map, 0);
             gl::DrawBuffer(gl::NONE);
             gl::ReadBuffer(gl::NONE);
 
-            #[rustfmt::skip]
-            let svertices: Vec<SVertex> = vec![
-                SVertex { pos: (-1.0, -1.0, 0.0).into() },
-                SVertex { pos: ( 1.0, -1.0, 0.0).into() },
-                SVertex { pos: (-1.0,  1.0, 0.0).into() },
-                
-                SVertex { pos: ( 1.0, -1.0, 0.0).into() },
-                SVertex { pos: (-1.0,  1.0, 0.0).into() },
-                SVertex { pos: ( 1.0,  1.0, 0.0).into() },
-            ];
-            svbo = buffer::ArrayBuffer::new();
-            svbo.bind();
-            svbo.static_draw_data(&svertices);
-
-            // set up vertex array object
-            svao = buffer::VertexArray::new();
-            svao.bind();
-            SVertex::vertex_attrib_pointers();
-
-            svao.unbind();
-            svbo.unbind();
             gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
         }
 
@@ -211,8 +191,6 @@ impl Model {
             shadow_program,
             _vbo: vbo,
             vao,
-            svao,
-            _svbo: svbo,
             ibo,
             indices: model.indices.len() as i32,
             size: max - min,
@@ -263,6 +241,9 @@ impl Model {
                     new.distance_shading_channel as u32,
                 )
             }
+            if new.shadows != old.shadows {
+                self.program.set_uniform_ui("shadows", new.shadows as u32)
+            }
         }
         self.program.unset_used();
         self.attributes = new;
@@ -273,21 +254,25 @@ impl Model {
     }
 
     pub fn render(&self, viewport: &Viewport) {
+        let light_space_matrix;
+        let lv;
         unsafe {
+            gl::Disable(gl::CULL_FACE);
+            // gl::CullFace(gl::FRONT);
+
             gl::Disable(gl::BLEND);
             gl::Enable(gl::DEPTH_TEST);
             gl::DepthFunc(gl::LESS);
             // Configure Shader and Matrices
             self.shadow_program.set_used();
             let near_plane = 0.01;
-            let far_plane = 400.0;
-            let light_projection = glm::ortho(-100.0, 100.0, -100.0, 100.0, near_plane, far_plane);
-            let light_view = glm::look_at(
-                &glm::vec3(-20.0, 40.0, -10.0),
-                &glm::vec3(0.0, 0.0, 0.0),
-                &glm::vec3(0.0, 1.0, 0.0),
-            );
-            let light_space_matrix = light_projection * light_view;
+            let far_plane = 1000.0;
+            let light_projection = glm::ortho(-200.0, 200.0, -200.0, 200.0, near_plane, far_plane);
+            let light = self.attributes.light_position;
+            let center = glm::vec3(0.0, 0.0, 0.0);
+            let light_view = glm::look_at(&light, &center, &glm::vec3(0.0, 1.0, 0.0));
+            lv = center - light;
+            light_space_matrix = light_projection * light_view;
             let light_space_matrix_uloc =
                 self.shadow_program.get_uniform_location("lightSpaceMatrix");
             gl::UniformMatrix4fv(
@@ -317,30 +302,31 @@ impl Model {
         }
 
         self.program.set_used();
-        self.svao.bind();
-        // self.ibo.bind();
+        self.vao.bind();
+        self.ibo.bind();
 
         unsafe {
+            self.program
+                .set_uniform_matrix4glm("light_space_matrix", &light_space_matrix);
+            self.program
+                .set_uniform_3f("light_vector", (lv[0], lv[1], lv[2]));
             gl::Disable(gl::BLEND);
-            // gl::Enable(gl::CULL_FACE);
+            gl::Enable(gl::CULL_FACE);
+            gl::CullFace(gl::BACK);
             gl::Enable(gl::DEPTH_TEST);
-            // gl::DepthFunc(gl::LESS);
+            gl::DepthFunc(gl::LESS);
             viewport.set_used();
 
             gl::BindTexture(gl::TEXTURE_2D, self.depth_map);
-            // gl::DrawElements(
-            //     gl::TRIANGLES,
-            //     self.indices,
-            //     gl::UNSIGNED_INT,
-            //     std::ptr::null::<std::ffi::c_void>(),
-            // );
-            gl::EnableVertexAttribArray(0);
-            self._svbo.bind();
-            gl::DrawArrays(gl::TRIANGLES, 0,  6);
-            gl::DisableVertexAttribArray(0)
+            gl::DrawElements(
+                gl::TRIANGLES,
+                self.indices,
+                gl::UNSIGNED_INT,
+                std::ptr::null::<std::ffi::c_void>(),
+            );
         }
-        // self.ibo.unbind();
-        self.svao.unbind();
+        self.ibo.unbind();
+        self.vao.unbind();
     }
 
     pub fn check_shader_update(&mut self, path: &std::path::Path, res: &Resources) -> bool {
@@ -350,26 +336,27 @@ impl Model {
                 Ok(program) => {
                     self.program.unset_used();
 
-                    // program.set_used();
-                    // let attr = &self.attributes;
-                    // unsafe {
-                    //     program.set_uniform_matrix4("projection_matrix", attr.projection_matrix);
-                    //     program.set_uniform_3f_na("camera_position", attr.camera_position);
-                    //     program.set_uniform_3f_na("color", attr.color);
-                    //     program.set_uniform_f("model_size", attr.model_size);
-                    //     program
-                    //         .set_uniform_f("distance_shading_power", attr.distance_shading_power);
-                    //     program.set_uniform_f(
-                    //         "distance_shading_constrict",
-                    //         attr.distance_shading_constrict,
-                    //     );
-                    //     program.set_uniform_f("toon_factor", attr.toon_factor);
-                    //     program.set_uniform_ui(
-                    //         "distance_shading_channel",
-                    //         attr.distance_shading_channel as u32,
-                    //     )
-                    // }
-                    // program.unset_used();
+                    program.set_used();
+                    let attr = &self.attributes;
+                    unsafe {
+                        program.set_uniform_matrix4("projection_matrix", attr.projection_matrix);
+                        program.set_uniform_3f_na("camera_position", attr.camera_position);
+                        program.set_uniform_3f_na("color", attr.color);
+                        program.set_uniform_f("model_size", attr.model_size);
+                        program
+                            .set_uniform_f("distance_shading_power", attr.distance_shading_power);
+                        program.set_uniform_f(
+                            "distance_shading_constrict",
+                            attr.distance_shading_constrict,
+                        );
+                        program.set_uniform_f("toon_factor", attr.toon_factor);
+                        program.set_uniform_ui(
+                            "distance_shading_channel",
+                            attr.distance_shading_channel as u32,
+                        );
+                        self.program.set_uniform_ui("shadows", attr.shadows as u32);
+                    }
+                    program.unset_used();
                     self.program = program;
                     return true;
                 }

@@ -7,17 +7,22 @@
 
 layout(location = 0) out vec4 o_Target;
 
+uniform sampler2DShadow shadowtexture;
+
 uniform vec3 camera_position;
+uniform vec3 light_vector;
 uniform vec3 color;
 uniform float model_size;
 uniform float distance_shading_power;
 uniform uint distance_shading_channel;
 uniform float distance_shading_constrict;
 uniform float toon_factor;
+uniform bool shadows;
 
 layout(location = 0) in vec3 normal_vector;
-layout(location = 1) in vec3 light_vector;
+layout(location = 1) in vec3 toon_light_vector;
 layout(location = 2) in vec3 position_vector;
+layout(location = 3) in vec4 uv;
 
 // https://stackoverflow.com/a/17897228
 // All components are in the range [0…1], including hue.
@@ -40,14 +45,42 @@ vec3 hsv2rgb(vec3 c)
     return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
 }
 
+vec2 poissonDisk[4] = vec2[](
+    vec2(-0.94201624,  -0.39906216),
+    vec2( 0.94558609,  -0.76890725),
+    vec2(-0.094184101, -0.92938870),
+    vec2( 0.34495938,   0.29387760)
+);
+
+float ShadowCalculation(vec4 fragPosLightSpace)
+{
+    float cosTheta = clamp(dot(light_vector, vec3(1)), 0.0, 1.0);
+    float bias = 0.005 * tan(acos(cosTheta));
+    bias = clamp(bias, 0.0, 0.01);
+
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    projCoords = projCoords * 0.5 + 0.5;
+    float closestDepth = texture(shadowtexture, projCoords.xyz).r;
+    float currentDepth = projCoords.z;
+    float shadow = 0.0;
+    if (closestDepth < currentDepth - bias) {
+        shadow = 1.0;
+    }
+    if (projCoords.z > 1.0) {
+        shadow = 0.0;
+    }
+    return shadow;
+}
+
 
 void main() {
     vec3 color = color;
+    float shadow = shadows ? ShadowCalculation(uv) : 0.0;
 
     vec3 toonShadingColor;
     {
         vec3 cl = color;    
-        vec3 light = -normalize(light_vector.xyz);    
+        vec3 light = -normalize(toon_light_vector.xyz);    
         float vdn = light.z;
         cl *= round(vdn * 5) / 5;
         cl *= vdn;
@@ -116,6 +149,10 @@ void main() {
     else if (distance_shading_channel == DSC_VALUE) {
         color.z *= d;
     }
+
+    // Shadows
+    color.z *= max(1.0 - shadow, 0.3);
+
     color = hsv2rgb(color);
 
     o_Target = vec4(color, 1);

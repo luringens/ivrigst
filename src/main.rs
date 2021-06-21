@@ -277,6 +277,20 @@ fn build_ui(ctx: &egui::CtxRef, model: &mut Model) {
                     });
                     ui.end_row();
 
+                    ui.label("Shadows");
+                    ui.checkbox(&mut attr.shadows, "");
+                    ui.end_row();
+
+                    ui.label("Light X");
+                    ui.add(egui::Slider::new(&mut attr.light_position[0], -1.0..=1.0));
+                    ui.end_row();
+                    ui.label("Light Y");
+                    ui.add(egui::Slider::new(&mut attr.light_position[1], -1.0..=1.0));
+                    ui.end_row();
+                    ui.label("Light Z");
+                    ui.add(egui::Slider::new(&mut attr.light_position[2], -1.0..=1.0));
+                    ui.end_row();
+
                     model.set_attributes(attr);
                 });
 
