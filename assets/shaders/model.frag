@@ -45,37 +45,60 @@ vec3 hsv2rgb(vec3 c)
     return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
 }
 
-vec2 poissonDisk[4] = vec2[](
-    vec2(-0.94201624,  -0.39906216),
-    vec2( 0.94558609,  -0.76890725),
-    vec2(-0.094184101, -0.92938870),
-    vec2( 0.34495938,   0.29387760)
+vec3 poissonDisk[16] = vec3[]( 
+   vec3( -0.94201624, -0.39906216, 0.0 ), 
+   vec3( 0.94558609, -0.76890725, 0.0 ), 
+   vec3( -0.094184101, -0.92938870, 0.0 ), 
+   vec3( 0.34495938, 0.29387760, 0.0 ), 
+   vec3( -0.91588581, 0.45771432, 0.0 ), 
+   vec3( -0.81544232, -0.87912464, 0.0 ), 
+   vec3( -0.38277543, 0.27676845, 0.0 ), 
+   vec3( 0.97484398, 0.75648379, 0.0 ), 
+   vec3( 0.44323325, -0.97511554, 0.0 ), 
+   vec3( 0.53742981, -0.47373420, 0.0 ), 
+   vec3( -0.26496911, -0.41893023, 0.0 ), 
+   vec3( 0.79197514, 0.19090188, 0.0 ), 
+   vec3( -0.24188840, 0.99706507, 0.0 ), 
+   vec3( -0.81409955, 0.91437590, 0.0 ), 
+   vec3( 0.19984126, 0.78641367, 0.0 ), 
+   vec3( 0.14383161, -0.1410079, 0.00 ) 
 );
+
+float random(vec3 seed, int i){
+	vec4 seed4 = vec4(seed,i);
+	float dot_product = dot(seed4, vec4(12.9898,78.233,45.164,94.673));
+	return fract(sin(dot_product) * 43758.5453);
+}
 
 float ShadowCalculation(vec4 fragPosLightSpace)
 {
     float cosTheta = clamp(dot(light_vector, vec3(1)), 0.0, 1.0);
-    float bias = 0.005 * tan(acos(cosTheta));
-    bias = clamp(bias, 0.0, 0.01);
+    float bias = 0.005;// * tan(acos(cosTheta));
+    //bias = clamp(bias, 0.0, 0.05);
 
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
     projCoords = projCoords * 0.5 + 0.5;
-    float closestDepth = texture(shadowtexture, projCoords.xyz).r;
     float currentDepth = projCoords.z;
-    float shadow = 0.0;
-    if (closestDepth < currentDepth - bias) {
-        shadow = 1.0;
+    // float closestDepth = texture(shadowtexture, projCoords.xyz).r;
+    float shadow = 1.0;
+    for (int i=0;i<4;i++){
+        
+        int index = int(16.0 * random(gl_FragCoord.xyy, i))%16;;
+        float sample_depth = texture(shadowtexture, projCoords.xyz + poissonDisk[index] / 700.0 ).r;
+        if (sample_depth < currentDepth - bias) {
+            shadow-=0.2;
+        }
     }
-    if (projCoords.z > 1.0) {
-        shadow = 0.0;
-    }
+    // if (projCoords.z > 1.0) {
+    //     shadow = 0.0;
+    // }
     return shadow;
 }
 
 
 void main() {
     vec3 color = color;
-    float shadow = shadows ? ShadowCalculation(uv) : 0.0;
+    float shadow = shadows ? ShadowCalculation(uv) : 1.0;
 
     vec3 toonShadingColor;
     {
@@ -151,7 +174,7 @@ void main() {
     }
 
     // Shadows
-    color.z *= max(1.0 - shadow, 0.3);
+    color.z *= shadow;
 
     color = hsv2rgb(color);
 

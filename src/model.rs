@@ -13,8 +13,8 @@ use render_gl_derive::VertexAttribPointers;
 
 const SHADER_PATH: &str = "shaders/model";
 const SHADER_NAME: &str = "model";
-const SHADOW_WIDTH: gl::types::GLsizei = 1024;
-const SHADOW_HEIGHT: gl::types::GLsizei = 1024;
+const SHADOW_WIDTH: gl::types::GLsizei = 2048;
+const SHADOW_HEIGHT: gl::types::GLsizei = 2048;
 
 #[derive(Copy, Clone, Debug, VertexAttribPointers)]
 #[repr(C, packed)]
@@ -257,18 +257,19 @@ impl Model {
         let light_space_matrix;
         let lv;
         unsafe {
-            gl::Disable(gl::CULL_FACE);
-            // gl::CullFace(gl::FRONT);
+            gl::Enable(gl::CULL_FACE);
+            gl::CullFace(gl::BACK);
 
             gl::Disable(gl::BLEND);
             gl::Enable(gl::DEPTH_TEST);
             gl::DepthFunc(gl::LESS);
             // Configure Shader and Matrices
             self.shadow_program.set_used();
-            let near_plane = 0.01;
-            let far_plane = 1000.0;
-            let light_projection = glm::ortho(-200.0, 200.0, -200.0, 200.0, near_plane, far_plane);
-            let light = self.attributes.light_position;
+            let near_plane = 1.0;
+            let far_plane = 500.0;
+            let light_projection = glm::ortho(-250.0, 250.0, -250.0, 250.0, near_plane, far_plane);
+            let light = self.attributes.light_position.normalize()
+                * self.attributes.camera_position.magnitude();
             let center = glm::vec3(0.0, 0.0, 0.0);
             let light_view = glm::look_at(&light, &center, &glm::vec3(0.0, 1.0, 0.0));
             lv = center - light;
