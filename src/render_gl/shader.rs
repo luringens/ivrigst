@@ -66,13 +66,7 @@ impl Program {
         Ok(Program { id: program_id })
     }
 
-    pub unsafe fn set_uniform_matrix4glm(&self, uniform_id: &str, data: &nalgebra_glm::Mat4) {
-        let uniform_location = self.get_uniform_location(uniform_id);
-        let data = data.as_slice();
-        gl::UniformMatrix4fv(uniform_location, 1, gl::FALSE, data.as_ptr());
-    }
-
-    pub unsafe fn set_uniform_matrix4(&self, uniform_id: &str, data: na::Matrix4<f32>) {
+    pub unsafe fn set_uniform_matrix4(&self, uniform_id: &str, data: &na::Matrix4<f32>) {
         let uniform_location = self.get_uniform_location(uniform_id);
         let data = data.as_slice();
         gl::UniformMatrix4fv(uniform_location, 1, gl::FALSE, data.as_ptr());
@@ -106,7 +100,7 @@ impl Program {
         gl::Uniform1ui(uniform_location, data);
     }
 
-    pub unsafe fn get_uniform_location(&self, uniform_id: &str) -> gl::types::GLint {
+    unsafe fn get_uniform_location(&self, uniform_id: &str) -> gl::types::GLint {
         let uniform_id = CString::new(uniform_id).expect("Invalid uniform_id.");
         gl::GetUniformLocation(self.id, uniform_id.as_ptr())
     }

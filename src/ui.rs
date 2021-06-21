@@ -80,7 +80,20 @@ impl UI {
     }
 
     pub fn set_texture(&self, width: i32, height: i32, texture: &egui::Texture) {
-        self.texture.load_texture(width, height, texture);
+        let pixels: Vec<u8> = texture
+            .pixels
+            .iter()
+            .map(|&a| egui::epaint::Color32::from_white_alpha(a).to_tuple())
+            .flat_map(|(r, g, b, a)| std::array::IntoIter::new([r, g, b, a]))
+            .collect();
+        self.texture.load_texture(
+            (width, height),
+            Some(pixels.as_slice()),
+            gl::SRGB8_ALPHA8 as gl::types::GLint,
+            gl::RGBA,
+            gl::UNSIGNED_BYTE,
+            true,
+        );
     }
 
     pub fn render(

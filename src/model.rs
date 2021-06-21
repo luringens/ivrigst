@@ -1,6 +1,7 @@
 use crate::{
     render_gl::{
-        self, buffer,
+        self,
+        buffer::{self, FrameBuffer, Texture},
         data::{self, f32_f32_f32},
         Viewport,
     },
@@ -8,7 +9,6 @@ use crate::{
 };
 use anyhow::{Context, Result};
 use nalgebra as na;
-use nalgebra_glm as glm;
 use render_gl_derive::VertexAttribPointers;
 
 const SHADER_PATH: &str = "shaders/model";
@@ -74,8 +74,8 @@ pub struct Model {
     indices: i32,
     size: na::Vector3<f32>,
     attributes: Attributes,
-    depth_map: u32,
-    depth_map_fbo: u32,
+    depth_map: Texture,
+    depth_map_fbo: FrameBuffer,
 }
 
 impl Model {
@@ -142,49 +142,25 @@ impl Model {
         }
 
         // Shadowstuff
-        let shadow_program;
-        let mut depth_map = 0;
-        let mut depth_map_fbo = 0;
-        unsafe {
-            shadow_program = render_gl::Program::from_res(res, "shaders/shadow")?;
-            gl::GenFramebuffers(1, &mut depth_map_fbo);
+        let shadow_program = render_gl::Program::from_res(res, "shaders/shadow")?;
+        shadow_program.set_used();
 
-            gl::GenTextures(1, &mut depth_map);
-            gl::BindTexture(gl::TEXTURE_2D, depth_map);
-            gl::TexImage2D(
-                gl::TEXTURE_2D,
-                0,
-                gl::DEPTH_COMPONENT as gl::types::GLint,
-                SHADOW_WIDTH,
-                SHADOW_HEIGHT,
-                0,
-                gl::DEPTH_COMPONENT,
-                gl::FLOAT,
-                0 as *const std::ffi::c_void,
-            );
-            #[rustfmt::skip]
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as gl::types::GLint);
-            #[rustfmt::skip]
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as gl::types::GLint);
-            #[rustfmt::skip]
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_BORDER as gl::types::GLint);
-            #[rustfmt::skip]
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_BORDER as gl::types::GLint);
-            let border_color = [1.0, 1.0, 1.0, 1.0];
-            gl::TexParameterfv(
-                gl::TEXTURE_2D,
-                gl::TEXTURE_BORDER_COLOR,
-                border_color.as_ptr(),
-            );
+        let depth_map = Texture::new();
+        depth_map.load_texture(
+            (SHADOW_WIDTH, SHADOW_HEIGHT),
+            None,
+            gl::DEPTH_COMPONENT as gl::types::GLint,
+            gl::DEPTH_COMPONENT,
+            gl::FLOAT,
+            false,
+        );
+        depth_map.set_border_color(&[1.0, 1.0, 1.0, 1.0]);
 
-            gl::BindFramebuffer(gl::FRAMEBUFFER, depth_map_fbo);
-            #[rustfmt::skip]
-            gl::FramebufferTexture2D(gl::FRAMEBUFFER, gl::DEPTH_ATTACHMENT, gl::TEXTURE_2D, depth_map, 0);
-            gl::DrawBuffer(gl::NONE);
-            gl::ReadBuffer(gl::NONE);
-
-            gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
-        }
+        let depth_map_fbo = FrameBuffer::new();
+        depth_map_fbo.bind();
+        depth_map_fbo.set_type(gl::NONE, gl::NONE);
+        depth_map_fbo.bind_texture(gl::DEPTH_ATTACHMENT, &depth_map);
+        depth_map_fbo.unbind();
 
         Ok(Self {
             program,
@@ -210,7 +186,7 @@ impl Model {
         unsafe {
             if new.projection_matrix != old.projection_matrix {
                 self.program
-                    .set_uniform_matrix4("projection_matrix", new.projection_matrix);
+                    .set_uniform_matrix4("projection_matrix", &new.projection_matrix);
             }
             if new.camera_position != old.camera_position {
                 self.program
@@ -254,40 +230,37 @@ impl Model {
     }
 
     pub fn render(&self, viewport: &Viewport) {
-        let light_space_matrix;
-        let lv;
         unsafe {
-            gl::Enable(gl::CULL_FACE);
-            gl::CullFace(gl::BACK);
-
+            gl::Disable(gl::CULL_FACE);
             gl::Disable(gl::BLEND);
             gl::Enable(gl::DEPTH_TEST);
             gl::DepthFunc(gl::LESS);
-            // Configure Shader and Matrices
             self.shadow_program.set_used();
+
+            // Set up light perspective
             let near_plane = 1.0;
             let far_plane = 500.0;
-            let light_projection = glm::ortho(-250.0, 250.0, -250.0, 250.0, near_plane, far_plane);
+            let bound = 250.0;
+            let light_projection =
+                na::Orthographic3::new(-bound, bound, -bound, bound, near_plane, far_plane);
             let light = self.attributes.light_position.normalize()
                 * self.attributes.camera_position.magnitude();
-            let center = glm::vec3(0.0, 0.0, 0.0);
-            let light_view = glm::look_at(&light, &center, &glm::vec3(0.0, 1.0, 0.0));
-            lv = center - light;
-            light_space_matrix = light_projection * light_view;
-            let light_space_matrix_uloc =
-                self.shadow_program.get_uniform_location("lightSpaceMatrix");
-            gl::UniformMatrix4fv(
-                light_space_matrix_uloc,
-                1,
-                gl::FALSE,
-                light_space_matrix.as_ptr(),
+            let center = na::Point3::new(0.0, 0.0, 0.0);
+            let light_view = na::Matrix4::look_at_rh(
+                &na::Point3::from(light),
+                &center,
+                &na::Vector3::new(0.0, 1.0, 0.0),
             );
+            let light_vector = center - light;
+            let light_space_matrix = light_projection.to_homogeneous() * light_view;
+            self.shadow_program
+                .set_uniform_matrix4("lightSpaceMatrix", &light_space_matrix);
 
+            // Render shadow map.
             gl::Viewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
-            gl::BindFramebuffer(gl::FRAMEBUFFER, self.depth_map_fbo);
+            self.depth_map_fbo.bind();
             gl::Clear(gl::DEPTH_BUFFER_BIT);
 
-            // RENDER SCENE
             self.vao.bind();
             self.ibo.bind();
             gl::DrawElements(
@@ -296,29 +269,21 @@ impl Model {
                 gl::UNSIGNED_INT,
                 std::ptr::null::<std::ffi::c_void>(),
             );
-            self.ibo.unbind();
-            self.vao.unbind();
+            self.depth_map_fbo.unbind();
 
-            gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
-        }
-
-        self.program.set_used();
-        self.vao.bind();
-        self.ibo.bind();
-
-        unsafe {
+            // Main render of model using shadows.
+            self.program.set_used();
             self.program
-                .set_uniform_matrix4glm("light_space_matrix", &light_space_matrix);
-            self.program
-                .set_uniform_3f("light_vector", (lv[0], lv[1], lv[2]));
-            gl::Disable(gl::BLEND);
+                .set_uniform_matrix4("light_space_matrix", &light_space_matrix);
+            self.program.set_uniform_3f(
+                "light_vector",
+                (light_vector[0], light_vector[1], light_vector[2]),
+            );
             gl::Enable(gl::CULL_FACE);
             gl::CullFace(gl::BACK);
-            gl::Enable(gl::DEPTH_TEST);
-            gl::DepthFunc(gl::LESS);
             viewport.set_used();
 
-            gl::BindTexture(gl::TEXTURE_2D, self.depth_map);
+            self.depth_map.bind();
             gl::DrawElements(
                 gl::TRIANGLES,
                 self.indices,
@@ -340,7 +305,7 @@ impl Model {
                     program.set_used();
                     let attr = &self.attributes;
                     unsafe {
-                        program.set_uniform_matrix4("projection_matrix", attr.projection_matrix);
+                        program.set_uniform_matrix4("projection_matrix", &attr.projection_matrix);
                         program.set_uniform_3f_na("camera_position", attr.camera_position);
                         program.set_uniform_3f_na("color", attr.color);
                         program.set_uniform_f("model_size", attr.model_size);

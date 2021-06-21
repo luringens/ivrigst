@@ -108,32 +108,54 @@ impl Texture {
         Self { texture_id }
     }
 
-    pub fn load_texture(&self, width: i32, height: i32, texture: &egui::Texture) {
-        let pixels: Vec<u8> = texture
-            .pixels
-            .iter()
-            .map(|&a| egui::epaint::Color32::from_white_alpha(a).to_tuple())
-            .flat_map(|(r, g, b, a)| std::array::IntoIter::new([r, g, b, a]))
-            .collect();
-
-        self.bind();
+    pub fn load_texture(
+        &self,
+        dimensions: (i32, i32),
+        pixels: Option<&[u8]>,
+        internal_format: gl::types::GLint,
+        format: gl::types::GLenum,
+        data_type: gl::types::GLenum,
+        repeat: bool,
+    ) {
         unsafe {
+            self.bind();
+            let pixels = match pixels {
+                Some(slice) => slice.as_ptr() as *const std::ffi::c_void,
+                None => std::ptr::null() as *const std::ffi::c_void,
+            };
+
             gl::TexImage2D(
                 gl::TEXTURE_2D, // Target
                 0,              // Level-of-detail number. 0 for no mip-map
-                gl::SRGB8_ALPHA8 as i32,
-                width,
-                height,
+                internal_format,
+                dimensions.0,
+                dimensions.1,
                 0, // Must be zero lol.
-                gl::RGBA,
-                gl::UNSIGNED_BYTE,
-                pixels.as_ptr() as *const std::ffi::c_void,
+                format,
+                data_type,
+                pixels,
             );
 
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
-            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
+            let param = match repeat {
+                true => gl::REPEAT,
+                false => gl::CLAMP_TO_BORDER,
+            };
+
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, param as i32);
+            gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, param as i32);
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
+        }
+    }
+
+    pub fn set_border_color(&self, border_color: &[f32; 4]) {
+        self.bind();
+        unsafe {
+            gl::TexParameterfv(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_BORDER_COLOR,
+                border_color.as_ptr(),
+            );
         }
     }
 
@@ -153,5 +175,62 @@ impl Texture {
 impl Drop for Texture {
     fn drop(&mut self) {
         unsafe { gl::DeleteTextures(1, &self.texture_id) }
+    }
+}
+
+pub struct FrameBuffer {
+    fbo: gl::types::GLuint,
+}
+
+impl FrameBuffer {
+    pub fn new() -> Self {
+        let mut fbo: gl::types::GLuint = 0;
+        unsafe {
+            gl::GenFramebuffers(1, &mut fbo);
+        }
+
+        Self { fbo }
+    }
+
+    pub fn set_type(&self, draw_type: gl::types::GLenum, read_type: gl::types::GLenum) {
+        self.bind();
+        unsafe {
+            gl::DrawBuffer(draw_type);
+            gl::ReadBuffer(read_type);
+        }
+    }
+
+    pub fn bind_texture(&self, attachment: gl::types::GLenum, texture: &Texture) {
+        self.bind();
+        unsafe {
+            gl::FramebufferTexture2D(
+                gl::FRAMEBUFFER,
+                attachment,
+                gl::TEXTURE_2D,
+                texture.texture_id,
+                0,
+            );
+        }
+    }
+
+    pub fn bind(&self) {
+        unsafe {
+            gl::BindFramebuffer(gl::FRAMEBUFFER, self.fbo);
+        }
+    }
+
+    pub fn unbind(&self) {
+        unsafe {
+            gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
+        }
+    }
+}
+
+impl Drop for FrameBuffer {
+    fn drop(&mut self) {
+        self.unbind();
+        unsafe {
+            gl::DeleteFramebuffers(1, &self.fbo);
+        }
     }
 }
