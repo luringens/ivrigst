@@ -289,17 +289,30 @@ fn build_ui(ctx: &egui::CtxRef, model: &mut Model) {
                     ui.checkbox(&mut attr.shadows, "");
                     ui.end_row();
 
+                    ui.label("Light follows camera");
+                    ui.checkbox(&mut attr.shadows_follow, "");
+                    ui.end_row();
+
                     ui.label("Light X");
-                    ui.add(egui::Slider::new(&mut attr.light_position[0], -1.0..=1.0));
+                    ui.scope(|ui| {
+                        ui.set_enabled(!attr.shadows_follow);
+                        ui.add(egui::Slider::new(&mut attr.light_position[0], -1.0..=1.0))
+                            .on_disabled_hover_text("Disabled while following camera.");
+                    });
                     ui.end_row();
                     ui.label("Light Y");
-                    ui.add(egui::Slider::new(&mut attr.light_position[1], -1.0..=1.0));
+                    ui.scope(|ui| {
+                        ui.set_enabled(!attr.shadows_follow);
+                        ui.add(egui::Slider::new(&mut attr.light_position[1], -1.0..=1.0))
+                            .on_disabled_hover_text("Disabled while following camera.");
+                    });
                     ui.end_row();
                     ui.label("Light Z");
-                    ui.add(egui::Slider::new(&mut attr.light_position[2], -1.0..=1.0));
-                    ui.end_row();
-                    ui.label("Light follow camera");
-                    ui.checkbox(&mut attr.shadows_follow, "");
+                    ui.scope(|ui| {
+                        ui.set_enabled(!attr.shadows_follow);
+                        ui.add(egui::Slider::new(&mut attr.light_position[2], -1.0..=1.0))
+                            .on_disabled_hover_text("Disabled while following camera.");
+                    });
                     ui.end_row();
                     ui.label("Light orbit distance");
                     ui.add(egui::Slider::new(
