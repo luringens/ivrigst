@@ -59,6 +59,8 @@ fn main() {
 
     render_gl::check_gl_error();
 
+    let time = std::time::Instant::now();
+
     let mut cursor: sdl2::mouse::Cursor;
     let mut ctx = egui::CtxRef::default();
     let mut first_frame = true;
@@ -178,6 +180,12 @@ fn main() {
             model.set_attributes(attr);
             mvp_needs_update = false;
         }
+
+        let elapsed = time.elapsed();
+        let mut attr = model.get_attributes().clone();
+        attr.elapsed = elapsed.as_millis() as f32;
+        model.set_attributes(attr);
+
         model.render(&viewport);
 
         // The egui texture isn't available until one frame has passed, so we've got to do it here.
@@ -289,6 +297,15 @@ fn build_ui(ctx: &egui::CtxRef, model: &mut Model) {
                     ui.end_row();
                     ui.label("Light Z");
                     ui.add(egui::Slider::new(&mut attr.light_position[2], -1.0..=1.0));
+                    ui.end_row();
+                    ui.label("Light follow camera");
+                    ui.checkbox(&mut attr.shadows_follow, "");
+                    ui.end_row();
+                    ui.label("Light orbit distance");
+                    ui.add(egui::Slider::new(
+                        &mut attr.shadows_orbit_radius,
+                        0.0..=100.0,
+                    ));
                     ui.end_row();
 
                     model.set_attributes(attr);

@@ -46,6 +46,9 @@ pub struct Attributes {
     pub toon_factor: f32,
     pub distance_shading_channel: DistanceShadingChannel,
     pub shadows: bool,
+    pub shadows_follow: bool,
+    pub shadows_orbit_radius: f32,
+    pub elapsed: f32,
 }
 
 impl Default for Attributes {
@@ -61,6 +64,9 @@ impl Default for Attributes {
             toon_factor: 0.8,
             distance_shading_channel: DistanceShadingChannel::None,
             shadows: true,
+            shadows_follow: false,
+            shadows_orbit_radius: 25.0,
+            elapsed: 0.0,
         }
     }
 }
@@ -243,8 +249,25 @@ impl Model {
             let bound = 250.0;
             let light_projection =
                 na::Orthographic3::new(-bound, bound, -bound, bound, near_plane, far_plane);
-            let light = self.attributes.light_position.normalize()
-                * self.attributes.camera_position.magnitude();
+
+            let light_pos = match self.attributes.shadows_follow {
+                true => self.attributes.camera_position,
+                false => self.attributes.light_position,
+            };
+            let light = light_pos.normalize() * self.attributes.camera_position.magnitude();
+
+            let cycle_speed_ms = 2000.0;
+            let degrees =
+                (self.attributes.elapsed % cycle_speed_ms) / cycle_speed_ms * std::f32::consts::TAU;
+            let axis = na::Unit::new_normalize(light);
+            let rotation = na::Matrix4::from_axis_angle(&axis, degrees);
+
+            let horizontal = na::Vector3::new(0.0, 1.0, 0.0).cross(&light);
+            let up_vector =
+                horizontal.cross(&light).normalize() * self.attributes.shadows_orbit_radius;
+
+            let light = (rotation * (light + up_vector).to_homogeneous()).xyz();
+
             let center = na::Point3::new(0.0, 0.0, 0.0);
             let light_view = na::Matrix4::look_at_rh(
                 &na::Point3::from(light),
