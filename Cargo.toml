@@ -13,6 +13,7 @@ sdl2 = { version = "0.34.5", features = ["bundled", "static-link"] }
 anyhow = "1.0.40"
 render_gl_derive = { path = "render_gl_derive" }
 nalgebra = "0.27.1"
+nalgebra-glm = "0.13.0"
 tobj = "3.0.1"
 egui = "0.12.0"
 notify = "4.0.17"

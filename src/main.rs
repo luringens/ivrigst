@@ -178,7 +178,7 @@ fn main() {
             model.set_attributes(attr);
             mvp_needs_update = false;
         }
-        model.render();
+        model.render(&viewport);
 
         // The egui texture isn't available until one frame has passed, so we've got to do it here.
         if first_frame {

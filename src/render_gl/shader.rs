@@ -100,7 +100,7 @@ impl Program {
         gl::Uniform1ui(uniform_location, data);
     }
 
-    unsafe fn get_uniform_location(&self, uniform_id: &str) -> gl::types::GLint {
+    pub unsafe fn get_uniform_location(&self, uniform_id: &str) -> gl::types::GLint {
         let uniform_id = CString::new(uniform_id).expect("Invalid uniform_id.");
         gl::GetUniformLocation(self.id, uniform_id.as_ptr())
     }
