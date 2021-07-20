@@ -230,7 +230,10 @@ fn build_ui(ctx: &egui::CtxRef, model: &mut Model) {
                     let mut color = [attr.color[0], attr.color[1], attr.color[2]];
                     ui.color_edit_button_rgb(&mut color);
                     attr.color = na::Vector3::from(color);
+                    ui.end_row();
 
+                    ui.label("Model colouring mix");
+                    ui.add(egui::Slider::new(&mut attr.vertex_color_mix, 0.0..=1.0));
                     ui.end_row();
 
                     // Toon shading enable/disable
@@ -285,8 +288,8 @@ fn build_ui(ctx: &egui::CtxRef, model: &mut Model) {
                     });
                     ui.end_row();
 
-                    ui.label("Shadows");
-                    ui.checkbox(&mut attr.shadows, "");
+                    ui.label("Shadow intensity");
+                    ui.add(egui::Slider::new(&mut attr.shadow_intensity, 0.0..=1.0));
                     ui.end_row();
 
                     ui.label("Light follows camera");

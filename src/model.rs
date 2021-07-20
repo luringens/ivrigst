@@ -23,6 +23,8 @@ pub struct Vertex {
     pub pos: data::f32_f32_f32,
     #[location = 1]
     pub normal: data::f32_f32_f32,
+    #[location = 2]
+    pub color: data::f32_f32_f32,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -45,10 +47,11 @@ pub struct Attributes {
     pub distance_shading_constrict: f32,
     pub toon_factor: f32,
     pub distance_shading_channel: DistanceShadingChannel,
-    pub shadows: bool,
+    pub shadow_intensity: f32,
     pub shadows_follow: bool,
     pub shadows_orbit_radius: f32,
     pub elapsed: f32,
+    pub vertex_color_mix: f32,
 }
 
 impl Default for Attributes {
@@ -56,17 +59,18 @@ impl Default for Attributes {
         Self {
             projection_matrix: Default::default(),
             camera_position: Default::default(),
-            light_position: na::Vector3::new(0.45, 0.25, -0.6),
+            light_position: na::Vector3::new(0.45, 0.25, 0.6),
             color: na::Vector3::new(1.0, 0.56, 0.72),
             model_size: Default::default(),
             distance_shading_power: 0.8,
             distance_shading_constrict: 0.2,
             toon_factor: 0.8,
             distance_shading_channel: DistanceShadingChannel::None,
-            shadows: true,
+            shadow_intensity: 0.6,
             shadows_follow: false,
             shadows_orbit_radius: 25.0,
             elapsed: 0.0,
+            vertex_color_mix: 1.0,
         }
     }
 }
@@ -110,13 +114,15 @@ impl Model {
             .positions
             .chunks_exact(3)
             .zip(model.normals.chunks_exact(3))
-            .map(|(p, n)| {
+            .zip(model.vertex_color.chunks_exact(3))
+            .map(|((p, n), c)| {
                 (
                     f32_f32_f32::from((p[0] - center[0], p[1] - center[1], p[2] - center[2])),
                     f32_f32_f32::from((n[0], n[1], n[2])),
+                    f32_f32_f32::from((c[0], c[1], c[2])),
                 )
             })
-            .map(|(pos, normal)| Vertex { pos, normal })
+            .map(|(pos, normal, color)| Vertex { pos, normal, color })
             .collect();
         let vbo = buffer::ArrayBuffer::new();
         vbo.bind();
@@ -218,8 +224,13 @@ impl Model {
                     new.distance_shading_channel as u32,
                 )
             }
-            if new.shadows != old.shadows {
-                self.program.set_uniform_ui("shadows", new.shadows as u32)
+            if new.shadow_intensity != old.shadow_intensity {
+                self.program
+                    .set_uniform_f("shadow_intensity", new.shadow_intensity)
+            }
+            if new.vertex_color_mix != old.vertex_color_mix {
+                self.program
+                    .set_uniform_f("vertex_color_mix", new.vertex_color_mix)
             }
         }
         self.program.unset_used();
@@ -246,7 +257,10 @@ impl Model {
                 "distance_shading_channel",
                 att.distance_shading_channel as u32,
             );
-            self.program.set_uniform_ui("shadows", att.shadows as u32)
+            self.program
+                .set_uniform_f("shadow_intensity", att.shadow_intensity);
+            self.program
+                .set_uniform_f("vertex_color_mix", att.vertex_color_mix);
         }
         self.program.unset_used();
     }

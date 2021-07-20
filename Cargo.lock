@@ -766,8 +766,7 @@ dependencies = [
 [[package]]
 name = "tobj"
 version = "3.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8985733c6a9b851f289747c1c3ee7a962a642787e248a97b6e04185d8d536d70"
+source = "git+https://github.com/stisol/tobj#6444bca35ebcb03a700c026eb226ec5d2a0d5238"
 dependencies = [
  "ahash",
 ]

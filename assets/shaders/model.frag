@@ -17,12 +17,14 @@ uniform float distance_shading_power;
 uniform uint distance_shading_channel;
 uniform float distance_shading_constrict;
 uniform float toon_factor;
-uniform bool shadows;
+uniform float shadow_intensity;
+uniform float vertex_color_mix;
 
 layout(location = 0) in vec3 normal_vector;
 layout(location = 1) in vec3 toon_light_vector;
 layout(location = 2) in vec3 position_vector;
-layout(location = 3) in vec4 uv;
+layout(location = 3) in vec3 vertex_color;
+layout(location = 4) in vec4 uv;
 
 // https://stackoverflow.com/a/17897228
 // All components are in the range [0…1], including hue.
@@ -81,12 +83,12 @@ float ShadowCalculation(vec4 fragPosLightSpace)
     float currentDepth = projCoords.z;
     // float closestDepth = texture(shadowtexture, projCoords.xyz).r;
     float shadow = 1.0;
-    for (int i=0;i<4;i++){
+    for (int i=0;i<16;i++){
         
         int index = int(16.0 * random(gl_FragCoord.xyy, i))%16;;
         float sample_depth = texture(shadowtexture, projCoords.xyz + poissonDisk[index] / 700.0 ).r;
         if (sample_depth < currentDepth - bias) {
-            shadow-=0.2;
+            shadow-= shadow_intensity / 16.0;
         }
     }
     // if (projCoords.z > 1.0) {
@@ -97,8 +99,8 @@ float ShadowCalculation(vec4 fragPosLightSpace)
 
 
 void main() {
-    vec3 color = color;
-    float shadow = shadows ? ShadowCalculation(uv) : 1.0;
+    vec3 color = mix(color, vertex_color, vertex_color_mix);
+    float shadow = shadow_intensity < 0.005 ? 1.0 : ShadowCalculation(uv);
 
     vec3 toonShadingColor;
     {
