@@ -224,11 +224,11 @@ impl Model {
                     new.distance_shading_channel as u32,
                 )
             }
-            if new.shadow_intensity != old.shadow_intensity {
+            if (new.shadow_intensity - old.shadow_intensity).abs() < f32::EPSILON {
                 self.program
                     .set_uniform_f("shadow_intensity", new.shadow_intensity)
             }
-            if new.vertex_color_mix != old.vertex_color_mix {
+            if (new.vertex_color_mix - old.vertex_color_mix).abs() < f32::EPSILON {
                 self.program
                     .set_uniform_f("vertex_color_mix", new.vertex_color_mix)
             }

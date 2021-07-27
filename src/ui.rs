@@ -107,11 +107,11 @@ impl UI {
         self.program.set_used();
 
         self.vbo.bind();
-        self.vbo.dynamic_draw_data(&vertices);
+        self.vbo.dynamic_draw_data(vertices.as_slice());
 
         self.vao.bind();
         self.ibo.bind();
-        self.ibo.dynamic_draw_data(&indices);
+        self.ibo.dynamic_draw_data(indices);
 
         self.texture.bind();
 
