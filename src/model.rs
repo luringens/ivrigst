@@ -271,62 +271,7 @@ impl Model {
 
     pub fn render(&self, viewport: &Viewport) {
         unsafe {
-            gl::Disable(gl::CULL_FACE);
-            gl::Disable(gl::BLEND);
-            gl::Enable(gl::DEPTH_TEST);
-            gl::DepthFunc(gl::LESS);
-            self.shadow_program.set_used();
-
-            // Set up light perspective
-            let near_plane = 1.0;
-            let far_plane = 500.0;
-            let bound = 250.0;
-            let light_projection =
-                na::Orthographic3::new(-bound, bound, -bound, bound, near_plane, far_plane);
-
-            let light_pos = match self.attributes.shadows_follow {
-                true => self.attributes.camera_position,
-                false => self.attributes.light_position,
-            };
-            let light = light_pos.normalize() * self.attributes.camera_position.magnitude();
-
-            let cycle_speed_ms = 2000.0;
-            let degrees =
-                (self.attributes.elapsed % cycle_speed_ms) / cycle_speed_ms * std::f32::consts::TAU;
-            let axis = na::Unit::new_normalize(light);
-            let rotation = na::Matrix4::from_axis_angle(&axis, degrees);
-
-            let horizontal = na::Vector3::new(0.0, 1.0, 0.0).cross(&light);
-            let up_vector =
-                horizontal.cross(&light).normalize() * self.attributes.shadows_orbit_radius;
-
-            let light = (rotation * (light + up_vector).to_homogeneous()).xyz();
-
-            let center = na::Point3::new(0.0, 0.0, 0.0);
-            let light_view = na::Matrix4::look_at_rh(
-                &na::Point3::from(light),
-                &center,
-                &na::Vector3::new(0.0, 1.0, 0.0),
-            );
-            let light_vector = center - light;
-            let light_space_matrix = light_projection.to_homogeneous() * light_view;
-            self.shadow_program
-                .set_uniform_matrix4("lightSpaceMatrix", &light_space_matrix);
-
-            // Render shadow map.
-            gl::Viewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
-            self.depth_map_fbo.bind();
-            gl::Clear(gl::DEPTH_BUFFER_BIT);
-
-            self.vao.bind();
-            self.ibo.bind();
-            gl::DrawElements(
-                gl::TRIANGLES,
-                self.indices,
-                gl::UNSIGNED_INT,
-                std::ptr::null::<std::ffi::c_void>(),
-            );
-            self.depth_map_fbo.unbind();
+            let (light_vector, light_space_matrix) = self.render_shadowmap();
 
             // Main render of model using shadows.
             self.program.set_used();
@@ -348,8 +293,64 @@ impl Model {
                 std::ptr::null::<std::ffi::c_void>(),
             );
         }
+        self.depth_map.unbind();
         self.ibo.unbind();
         self.vao.unbind();
+    }
+
+    unsafe fn render_shadowmap(
+        &self,
+    ) -> (
+        na::OPoint<f32, na::Const<3>>,
+        na::Matrix<f32, na::Const<4>, na::Const<4>, na::ArrayStorage<f32, 4, 4>>,
+    )
+    {
+        gl::Disable(gl::CULL_FACE);
+        gl::Disable(gl::BLEND);
+        gl::Enable(gl::DEPTH_TEST);
+        gl::DepthFunc(gl::LESS);
+        self.shadow_program.set_used();
+        let near_plane = 1.0;
+        let far_plane = 500.0;
+        let bound = 250.0;
+        let light_projection =
+            na::Orthographic3::new(-bound, bound, -bound, bound, near_plane, far_plane);
+        let light_pos = match self.attributes.shadows_follow {
+            true => self.attributes.camera_position,
+            false => self.attributes.light_position,
+        };
+        let light = light_pos.normalize() * self.attributes.camera_position.magnitude();
+        let cycle_speed_ms = 2000.0;
+        let degrees =
+            (self.attributes.elapsed % cycle_speed_ms) / cycle_speed_ms * std::f32::consts::TAU;
+        let axis = na::Unit::new_normalize(light);
+        let rotation = na::Matrix4::from_axis_angle(&axis, degrees);
+        let horizontal = na::Vector3::new(0.0, 1.0, 0.0).cross(&light);
+        let up_vector = horizontal.cross(&light).normalize() * self.attributes.shadows_orbit_radius;
+        let light = (rotation * (light + up_vector).to_homogeneous()).xyz();
+        let center = na::Point3::new(0.0, 0.0, 0.0);
+        let light_view = na::Matrix4::look_at_rh(
+            &na::Point3::from(light),
+            &center,
+            &na::Vector3::new(0.0, 1.0, 0.0),
+        );
+        let light_vector = center - light;
+        let light_space_matrix = light_projection.to_homogeneous() * light_view;
+        self.shadow_program
+            .set_uniform_matrix4("lightSpaceMatrix", &light_space_matrix);
+        gl::Viewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
+        self.depth_map_fbo.bind();
+        gl::Clear(gl::DEPTH_BUFFER_BIT);
+        self.vao.bind();
+        self.ibo.bind();
+        gl::DrawElements(
+            gl::TRIANGLES,
+            self.indices,
+            gl::UNSIGNED_INT,
+            std::ptr::null::<std::ffi::c_void>(),
+        );
+        self.depth_map_fbo.unbind();
+        (light_vector, light_space_matrix)
     }
 
     pub fn check_shader_update(&mut self, path: &std::path::Path, res: &Resources) -> bool {
