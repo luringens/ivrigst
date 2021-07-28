@@ -4,11 +4,13 @@ mod camera;
 mod model;
 pub mod render_gl;
 pub mod resources;
+mod texture_tester;
 mod ui;
 
 use nalgebra as na;
 use sdl2::event::Event;
 use std::path::Path;
+use texture_tester::TextureTester;
 
 use crate::{model::Model, resources::Resources, ui::UI};
 
@@ -58,11 +60,14 @@ fn main() {
     render_gl::check_gl_error();
 
     let time = std::time::Instant::now();
+    let mut texture_tester = TextureTester::new(&res).expect("Failed to set up texture tester.");
 
     let mut cursor: sdl2::mouse::Cursor;
     let mut ctx = egui::CtxRef::default();
     let mut first_frame = true;
     let mut mvp_needs_update = true;
+    let mut ui_actions = ui::UiActions::default();
+
     let mut event_pump = sdl.event_pump().unwrap();
     'main: loop {
         let mut raw_input: egui::RawInput = Default::default();
@@ -147,7 +152,7 @@ fn main() {
 
         // UI handling
         ctx.begin_frame(raw_input);
-        ui.build_ui(&ctx, &mut model);
+        ui.build_ui(&ctx, &mut model, &mut ui_actions);
         let (output, shapes) = ctx.end_frame();
         let clipped_meshes: Vec<egui::ClippedMesh> = ctx.tessellate(shapes);
 
@@ -202,14 +207,23 @@ fn main() {
                 .render(&mesh.vertices, &mesh.indices, clip_rect, viewport.size());
         }
 
+        if ui_actions.show_debug {
+            texture_tester.render(
+                &viewport,
+                model.get_hatch_texture(),
+                model.get_shadow_texture(),
+            );
+        }
+
         window.gl_swap_window();
         render_gl::check_gl_error();
 
         // Update shaders if needed
         for path in res.updated_paths() {
             eprintln!("Path updated: {}", path.to_string_lossy());
-            model.check_shader_update(&path, &res);
             ui.renderer.check_shader_update(&path, &res);
+            model.check_shader_update(&path, &res);
+            texture_tester.check_shader_update(&path, &res);
         }
     }
 }

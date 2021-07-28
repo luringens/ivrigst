@@ -4,4 +4,4 @@ mod ui;
 
 pub use render::UIRenderer;
 pub use sdl2_egui_translation::*;
-pub use ui::UI;
+pub use ui::{UiActions, UI};

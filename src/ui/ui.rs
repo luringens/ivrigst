@@ -12,6 +12,11 @@ pub struct UI {
     preset: Preset,
 }
 
+#[derive(Default)]
+pub struct UiActions {
+    pub show_debug: bool,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Preset {
     ToonWithShadow,
@@ -26,7 +31,12 @@ impl UI {
         Ok(Self { renderer, preset })
     }
 
-    pub fn build_ui(&mut self, ctx: &egui::CtxRef, model: &mut crate::Model) {
+    pub fn build_ui(
+        &mut self,
+        ctx: &egui::CtxRef,
+        model: &mut crate::Model,
+        ui_actions: &mut UiActions,
+    ) {
         egui::Window::new("Settings")
             .auto_sized()
             .collapsible(true)
@@ -158,6 +168,10 @@ impl UI {
                                 &mut attr.shadows_orbit_radius,
                                 0.0..=100.0,
                             ));
+                            ui.end_row();
+
+                            ui.label("Display shader buffers");
+                            ui.checkbox(&mut ui_actions.show_debug, "");
                             ui.end_row();
 
                             model.set_attributes(attr);

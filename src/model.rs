@@ -11,10 +11,16 @@ use anyhow::{Context, Result};
 use nalgebra as na;
 use render_gl_derive::VertexAttribPointers;
 
-const SHADER_PATH: &str = "shaders/model";
-const SHADER_NAME: &str = "model";
+const MAIN_SHADER_PATH: &str = "shaders/model";
+const MAIN_SHADER_NAME: &str = "model";
+const SHADOW_SHADER_PATH: &str = "shaders/shadow";
+const SHADOW_SHADER_NAME: &str = "shadow";
+const HATCHING_SHADER_PATH: &str = "shaders/hatching";
+const HATCHING_SHADER_NAME: &str = "hatching";
 const SHADOW_WIDTH: gl::types::GLsizei = 2048;
 const SHADOW_HEIGHT: gl::types::GLsizei = 2048;
+const TEXTURE_UNIT_SHADOW: gl::types::GLenum = gl::TEXTURE0;
+const TEXTURE_UNIT_HATCH: gl::types::GLenum = gl::TEXTURE1;
 
 #[derive(Copy, Clone, Debug, VertexAttribPointers)]
 #[repr(C, packed)]
@@ -78,6 +84,7 @@ impl Default for Attributes {
 pub struct Model {
     program: render_gl::Program,
     shadow_program: render_gl::Program,
+    hatching_program: render_gl::Program,
     vao: buffer::VertexArray,
     _vbo: buffer::ArrayBuffer,
     ibo: buffer::ElementArrayBuffer,
@@ -86,12 +93,14 @@ pub struct Model {
     attributes: Attributes,
     depth_map: Texture,
     depth_map_fbo: FrameBuffer,
+    hatch_map: Texture,
+    hatch_map_fbo: FrameBuffer,
 }
 
 impl Model {
     pub fn new(res: &Resources) -> Result<Self> {
         // set up shader program
-        let program = render_gl::Program::from_res(res, SHADER_PATH)?;
+        let program = render_gl::Program::from_res(res, MAIN_SHADER_PATH)?;
 
         let model = res
             .load_model("model.obj")
@@ -142,10 +151,10 @@ impl Model {
         vao.unbind();
 
         // Shadowstuff
-        let shadow_program = render_gl::Program::from_res(res, "shaders/shadow")?;
+        let shadow_program = render_gl::Program::from_res(res, SHADOW_SHADER_PATH)?;
         shadow_program.set_used();
 
-        let depth_map = Texture::new();
+        let depth_map = Texture::new(TEXTURE_UNIT_SHADOW);
         depth_map.load_texture(
             (SHADOW_WIDTH, SHADOW_HEIGHT),
             None,
@@ -167,9 +176,28 @@ impl Model {
             ..Default::default()
         };
 
+        let hatching_program = render_gl::Program::from_res(res, HATCHING_SHADER_PATH)?;
+        let hatch_map = Texture::new(TEXTURE_UNIT_HATCH);
+        hatch_map.load_texture(
+            (SHADOW_WIDTH, SHADOW_HEIGHT),
+            None,
+            gl::DEPTH_COMPONENT as gl::types::GLint,
+            gl::DEPTH_COMPONENT,
+            gl::FLOAT,
+            false,
+        );
+        hatch_map.set_border_color(&[1.0, 1.0, 1.0, 1.0]);
+
+        let hatch_map_fbo = FrameBuffer::new();
+        hatch_map_fbo.bind();
+        hatch_map_fbo.set_type(gl::NONE, gl::NONE);
+        hatch_map_fbo.bind_texture(gl::DEPTH_ATTACHMENT, &hatch_map);
+        hatch_map_fbo.unbind();
+
         let value = Self {
             program,
             shadow_program,
+            hatching_program,
             _vbo: vbo,
             vao,
             ibo,
@@ -178,6 +206,8 @@ impl Model {
             attributes,
             depth_map,
             depth_map_fbo,
+            hatch_map,
+            hatch_map_fbo,
         };
         value.reset_all_attributes();
         Ok(value)
@@ -187,6 +217,14 @@ impl Model {
         &self.attributes
     }
 
+    pub fn get_hatch_texture(&self) -> &Texture {
+        &self.hatch_map
+    }
+
+    pub fn get_shadow_texture(&self) -> &Texture {
+        &self.depth_map
+    }
+
     pub fn set_attributes(&mut self, new: Attributes) {
         let old = &self.attributes;
         self.program.set_used();
@@ -194,6 +232,10 @@ impl Model {
             if new.projection_matrix != old.projection_matrix {
                 self.program
                     .set_uniform_matrix4("projection_matrix", &new.projection_matrix);
+                self.hatching_program.set_used();
+                self.hatching_program
+                    .set_uniform_matrix4("projection_matrix", &new.projection_matrix);
+                self.program.set_used();
             }
             if new.camera_position != old.camera_position {
                 self.program
@@ -261,8 +303,11 @@ impl Model {
                 .set_uniform_f("shadow_intensity", att.shadow_intensity);
             self.program
                 .set_uniform_f("vertex_color_mix", att.vertex_color_mix);
+            self.hatching_program.set_used();
+            self.hatching_program
+                .set_uniform_matrix4("projection_matrix", &att.projection_matrix);
         }
-        self.program.unset_used();
+        self.hatching_program.unset_used();
     }
 
     pub fn get_size(&self) -> &na::Vector3<f32> {
@@ -272,6 +317,7 @@ impl Model {
     pub fn render(&self, viewport: &Viewport) {
         unsafe {
             let (light_vector, light_space_matrix) = self.render_shadowmap();
+            self.render_hatchmap();
 
             // Main render of model using shadows.
             self.program.set_used();
@@ -284,8 +330,10 @@ impl Model {
             gl::Enable(gl::CULL_FACE);
             gl::CullFace(gl::BACK);
             viewport.set_used();
-
+            self.vao.bind();
+            self.ibo.bind();
             self.depth_map.bind();
+            self.hatch_map.bind();
             gl::DrawElements(
                 gl::TRIANGLES,
                 self.indices,
@@ -293,6 +341,7 @@ impl Model {
                 std::ptr::null::<std::ffi::c_void>(),
             );
         }
+        self.hatch_map.unbind();
         self.depth_map.unbind();
         self.ibo.unbind();
         self.vao.unbind();
@@ -303,8 +352,7 @@ impl Model {
     ) -> (
         na::OPoint<f32, na::Const<3>>,
         na::Matrix<f32, na::Const<4>, na::Const<4>, na::ArrayStorage<f32, 4, 4>>,
-    )
-    {
+    ) {
         gl::Disable(gl::CULL_FACE);
         gl::Disable(gl::BLEND);
         gl::Enable(gl::DEPTH_TEST);
@@ -353,13 +401,54 @@ impl Model {
         (light_vector, light_space_matrix)
     }
 
+    unsafe fn render_hatchmap(&self) {
+        self.hatching_program.set_used();
+        self.hatching_program.set_uniform_f("hatching_depth", 1.0);
+        self.hatch_map_fbo.bind();
+        gl::Disable(gl::CULL_FACE);
+        gl::Disable(gl::BLEND);
+        gl::Enable(gl::DEPTH_TEST);
+        gl::DepthFunc(gl::LESS);
+        gl::Viewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
+        gl::Clear(gl::DEPTH_BUFFER_BIT);
+        self.vao.bind();
+        self.ibo.bind();
+        gl::DrawElements(
+            gl::TRIANGLES,
+            self.indices,
+            gl::UNSIGNED_INT,
+            std::ptr::null::<std::ffi::c_void>(),
+        );
+        self.hatch_map_fbo.unbind();
+    }
+
     pub fn check_shader_update(&mut self, path: &std::path::Path, res: &Resources) -> bool {
         let path = path.file_stem().map(|p| p.to_string_lossy().to_string());
-        if path == Some(SHADER_NAME.to_string()) {
-            match render_gl::Program::from_res(res, SHADER_PATH) {
+        if path == Some(MAIN_SHADER_NAME.to_string()) {
+            match render_gl::Program::from_res(res, MAIN_SHADER_PATH) {
                 Ok(program) => {
                     self.program.unset_used();
                     self.program = program;
+                    self.reset_all_attributes();
+                    return true;
+                }
+                Err(e) => eprintln!("Shader reload error: {}", e),
+            }
+        } else if path == Some(SHADOW_SHADER_NAME.to_string()) {
+            match render_gl::Program::from_res(res, SHADOW_SHADER_PATH) {
+                Ok(program) => {
+                    self.shadow_program.unset_used();
+                    self.shadow_program = program;
+                    self.reset_all_attributes();
+                    return true;
+                }
+                Err(e) => eprintln!("Shader reload error: {}", e),
+            }
+        } else if path == Some(HATCHING_SHADER_NAME.to_string()) {
+            match render_gl::Program::from_res(res, HATCHING_SHADER_PATH) {
+                Ok(program) => {
+                    self.hatching_program.unset_used();
+                    self.hatching_program = program;
                     self.reset_all_attributes();
                     return true;
                 }

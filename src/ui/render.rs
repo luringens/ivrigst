@@ -10,6 +10,7 @@ use render_gl_derive::VertexAttribPointers;
 
 const SHADER_PATH: &str = "shaders/egui";
 const SHADER_NAME: &str = "egui";
+const TEXTURE_UNIT: gl::types::GLenum = gl::TEXTURE0;
 
 #[derive(Copy, Clone, Debug, VertexAttribPointers)]
 #[repr(C, packed)]
@@ -63,7 +64,7 @@ impl UIRenderer {
         let ibo = buffer::ElementArrayBuffer::new();
         ibo.bind();
 
-        let texture = buffer::Texture::new();
+        let texture = buffer::Texture::new(TEXTURE_UNIT);
         texture.bind();
         texture.unbind();
         ibo.unbind();

@@ -96,16 +96,20 @@ impl Drop for VertexArray {
 
 pub struct Texture {
     texture_id: gl::types::GLuint,
+    texture_unit: gl::types::GLuint,
 }
 
 impl Texture {
-    pub fn new() -> Self {
+    pub fn new(texture_unit: gl::types::GLenum) -> Self {
         let mut texture_id: gl::types::GLuint = 0;
         unsafe {
             gl::GenTextures(1, &mut texture_id);
         }
 
-        Self { texture_id }
+        Self {
+            texture_id,
+            texture_unit,
+        }
     }
 
     pub fn load_texture(
@@ -145,11 +149,15 @@ impl Texture {
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, param as i32);
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
+            gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_COMPARE_MODE,
+                gl::COMPARE_REF_TO_TEXTURE as i32,
+            );
         }
     }
 
     pub fn set_border_color(&self, border_color: &[f32; 4]) {
-        self.bind();
         unsafe {
             gl::TexParameterfv(
                 gl::TEXTURE_2D,
@@ -161,12 +169,21 @@ impl Texture {
 
     pub fn bind(&self) {
         unsafe {
+            gl::ActiveTexture(self.texture_unit);
+            gl::BindTexture(gl::TEXTURE_2D, self.texture_id);
+        }
+    }
+
+    pub fn bind_to(&self, texture_unit: gl::types::GLenum) {
+        unsafe {
+            gl::ActiveTexture(texture_unit);
             gl::BindTexture(gl::TEXTURE_2D, self.texture_id);
         }
     }
 
     pub fn unbind(&self) {
         unsafe {
+            gl::ActiveTexture(self.texture_unit);
             gl::BindTexture(gl::TEXTURE_2D, 0);
         }
     }

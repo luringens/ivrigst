@@ -8,6 +8,7 @@
 layout(location = 0) out vec4 o_Target;
 
 uniform sampler2DShadow shadowtexture;
+uniform sampler2DShadow hatchingtexture;
 
 uniform vec3 camera_position;
 uniform vec3 light_vector;
@@ -97,6 +98,16 @@ float ShadowCalculation(vec4 fragPosLightSpace)
     return shadow;
 }
 
+float hatchingCalculation()
+{
+    vec3 projCoords = gl_FragCoord.xyz / gl_FragCoord.w;
+    projCoords = projCoords * 0.5 + 0.5;
+    float sample_depth = texture(hatchingtexture, projCoords);
+
+    // float difference = abs(sample_depth - frag_depth);
+
+    return sample_depth;
+}
 
 void main() {
     vec3 color = mix(color, vertex_color, vertex_color_mix);
@@ -160,7 +171,7 @@ void main() {
     }
 
     // Calculate magnitude of shading.
-    float z = abs(gl_FragCoord.z / gl_FragCoord.w / 1);
+    float z = abs(gl_FragCoord.z / gl_FragCoord.w);
     float d = 1.0 - min(smoothstep(near_plane, far_plane, z), power);
     color = rgb2hsv(color);
 
@@ -180,5 +191,9 @@ void main() {
 
     color = hsv2rgb(color);
 
-    o_Target = vec4(color, 1);
+    // float hatching = hatchingCalculation();
+    // color = vec3(hatching / 2);
+
+    // o_Target = vec4(color, 1);
+    o_Target = vec4(vec3(gl_FragCoord.z * 10000000 * gl_FragCoord.w), 1);
 }
