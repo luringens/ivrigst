@@ -13,7 +13,7 @@ sdl2 = { version = "0.34.5", features = ["bundled", "static-link"] }
 anyhow = "1.0.40"
 render_gl_derive = { path = "render_gl_derive" }
 nalgebra = "0.28.0"
-tobj = { git = "https://github.com/stisol/tobj" }
+tobj = "3.1.0"
 egui = "0.13.1"
 notify = "4.0.17"
 clipboard = "0.5"
