@@ -38,7 +38,7 @@ impl From<&egui::epaint::Vertex> for Vertex {
     }
 }
 
-pub struct UI {
+pub struct UIRenderer {
     ibo: buffer::ElementArrayBuffer,
     program: render_gl::Program,
     texture: buffer::Texture,
@@ -46,7 +46,7 @@ pub struct UI {
     vbo: buffer::ArrayBuffer,
 }
 
-impl UI {
+impl UIRenderer {
     pub fn new(res: &Resources) -> Result<Self> {
         // set up shader program
         let program = render_gl::Program::from_res(res, SHADER_PATH)?;
