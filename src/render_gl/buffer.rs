@@ -95,7 +95,7 @@ impl Drop for VertexArray {
 }
 
 pub struct Texture {
-    texture_id: gl::types::GLuint,
+    pub texture_id: gl::types::GLuint,
     texture_unit: gl::types::GLuint,
 }
 
@@ -178,6 +178,17 @@ impl Texture {
         unsafe {
             gl::ActiveTexture(texture_unit);
             gl::BindTexture(gl::TEXTURE_2D, self.texture_id);
+        }
+    }
+
+    pub fn use_as_shadow(&self) {
+        self.bind();
+        unsafe {
+            gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_COMPARE_MODE,
+                gl::COMPARE_REF_TO_TEXTURE as gl::types::GLint,
+            );
         }
     }
 

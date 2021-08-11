@@ -58,6 +58,10 @@ pub struct Attributes {
     pub shadows_orbit_radius: f32,
     pub elapsed: f32,
     pub vertex_color_mix: f32,
+    pub hatching_depth: f32,
+    pub hatching_frequency: u32,
+    pub hatching_steps: u32,
+    pub hatching_intensity: f32,
 }
 
 impl Default for Attributes {
@@ -77,6 +81,10 @@ impl Default for Attributes {
             shadows_orbit_radius: 25.0,
             elapsed: 0.0,
             vertex_color_mix: 1.0,
+            hatching_depth: 2.0,
+            hatching_steps: 200,
+            hatching_frequency: 6,
+            hatching_intensity: 0.5,
         }
     }
 }
@@ -274,6 +282,14 @@ impl Model {
                 self.program
                     .set_uniform_f("vertex_color_mix", new.vertex_color_mix)
             }
+            if (new.hatching_intensity - old.hatching_intensity).abs() < f32::EPSILON {
+                self.program
+                    .set_uniform_f("hatching_intensity", new.hatching_intensity)
+            }
+            if new.hatching_frequency != old.hatching_frequency {
+                self.program
+                    .set_uniform_ui("hatching_frequency", new.hatching_frequency)
+            }
         }
         self.program.unset_used();
         self.attributes = new;
@@ -303,11 +319,12 @@ impl Model {
                 .set_uniform_f("shadow_intensity", att.shadow_intensity);
             self.program
                 .set_uniform_f("vertex_color_mix", att.vertex_color_mix);
-            self.hatching_program.set_used();
-            self.hatching_program
-                .set_uniform_matrix4("projection_matrix", &att.projection_matrix);
+            self.program
+                .set_uniform_f("hatching_intensity", att.hatching_intensity);
+            self.program
+                .set_uniform_ui("hatching_frequency", att.hatching_frequency);
         }
-        self.hatching_program.unset_used();
+        self.program.unset_used();
     }
 
     pub fn get_size(&self) -> &na::Vector3<f32> {
@@ -317,12 +334,14 @@ impl Model {
     pub fn render(&self, viewport: &Viewport) {
         unsafe {
             let (light_vector, light_space_matrix) = self.render_shadowmap();
-            self.render_hatchmap();
+            let hatch_space_matrix = self.render_hatchmap();
 
             // Main render of model using shadows.
             self.program.set_used();
             self.program
                 .set_uniform_matrix4("light_space_matrix", &light_space_matrix);
+            self.program
+                .set_uniform_matrix4("hatch_space_matrix", &hatch_space_matrix);
             self.program.set_uniform_3f(
                 "light_vector",
                 (light_vector[0], light_vector[1], light_vector[2]),
@@ -332,8 +351,10 @@ impl Model {
             viewport.set_used();
             self.vao.bind();
             self.ibo.bind();
-            self.depth_map.bind();
-            self.hatch_map.bind();
+            self.depth_map.bind_to(gl::TEXTURE0);
+            self.hatch_map.bind_to(gl::TEXTURE0 + 1);
+            self.depth_map.use_as_shadow();
+            self.hatch_map.use_as_shadow();
             gl::DrawElements(
                 gl::TRIANGLES,
                 self.indices,
@@ -401,10 +422,33 @@ impl Model {
         (light_vector, light_space_matrix)
     }
 
-    unsafe fn render_hatchmap(&self) {
+    unsafe fn render_hatchmap(
+        &self,
+    ) -> na::Matrix<f32, na::Const<4>, na::Const<4>, na::ArrayStorage<f32, 4, 4>> {
         self.hatching_program.set_used();
-        self.hatching_program.set_uniform_f("hatching_depth", 1.0);
+        self.hatching_program
+            .set_uniform_f("hatching_depth", self.attributes.hatching_depth);
+        self.hatching_program
+            .set_uniform_ui("steps", self.attributes.hatching_steps);
         self.hatch_map_fbo.bind();
+
+        let near_plane = 1.0;
+        let far_plane = 500.0;
+        let bound = 250.0;
+        let hatch_projection =
+            na::Orthographic3::new(-bound, bound, -bound, bound, near_plane, far_plane);
+        let hatch_pos = self.attributes.camera_position;
+        let light = hatch_pos.normalize() * self.attributes.camera_position.magnitude();
+        let center = na::Point3::new(0.0, 0.0, 0.0);
+        let hatch_view = na::Matrix4::look_at_rh(
+            &na::Point3::from(light),
+            &center,
+            &na::Vector3::new(0.0, 1.0, 0.0),
+        );
+        let hatch_space_matrix = hatch_projection.to_homogeneous() * hatch_view;
+        self.hatching_program
+            .set_uniform_matrix4("projection_matrix", &hatch_space_matrix);
+
         gl::Disable(gl::CULL_FACE);
         gl::Disable(gl::BLEND);
         gl::Enable(gl::DEPTH_TEST);
@@ -420,6 +464,7 @@ impl Model {
             std::ptr::null::<std::ffi::c_void>(),
         );
         self.hatch_map_fbo.unbind();
+        hatch_space_matrix
     }
 
     pub fn check_shader_update(&mut self, path: &std::path::Path, res: &Resources) -> bool {

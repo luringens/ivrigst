@@ -170,6 +170,22 @@ impl UI {
                             ));
                             ui.end_row();
 
+                            ui.label("Hatching depth");
+                            ui.add(egui::Slider::new(&mut attr.hatching_depth, 1.0..=4.0));
+                            ui.end_row();
+
+                            ui.label("Hatching steps");
+                            ui.add(egui::Slider::new(&mut attr.hatching_steps, 1..=500));
+                            ui.end_row();
+
+                            ui.label("Hatching frequency");
+                            ui.add(egui::Slider::new(&mut attr.hatching_frequency, 1..=50));
+                            ui.end_row();
+
+                            ui.label("Hatching intensity");
+                            ui.add(egui::Slider::new(&mut attr.hatching_intensity, 0.0..=1.0));
+                            ui.end_row();
+
                             ui.label("Display shader buffers");
                             ui.checkbox(&mut ui_actions.show_debug, "");
                             ui.end_row();

@@ -7,8 +7,8 @@
 
 layout(location = 0) out vec4 o_Target;
 
-uniform sampler2DShadow shadowtexture;
-uniform sampler2DShadow hatchingtexture;
+layout(binding = 0) uniform sampler2DShadow shadowtexture;
+layout(binding = 1) uniform sampler2DShadow hatchingtexture;
 
 uniform vec3 camera_position;
 uniform vec3 light_vector;
@@ -20,12 +20,15 @@ uniform float distance_shading_constrict;
 uniform float toon_factor;
 uniform float shadow_intensity;
 uniform float vertex_color_mix;
+uniform uint hatching_frequency;
+uniform float hatching_intensity;
 
 layout(location = 0) in vec3 normal_vector;
 layout(location = 1) in vec3 toon_light_vector;
 layout(location = 2) in vec3 position_vector;
 layout(location = 3) in vec3 vertex_color;
 layout(location = 4) in vec4 uv;
+layout(location = 5) in vec4 hatchpos;
 
 // https://stackoverflow.com/a/17897228
 // All components are in the range [0…1], including hue.
@@ -98,15 +101,26 @@ float ShadowCalculation(vec4 fragPosLightSpace)
     return shadow;
 }
 
+float triangle(float x) {
+    // Put on a -1 to 1 range
+    x = float(int(floor(abs(x))) % hatching_frequency) / hatching_frequency * 2.0 - 1.0;
+
+    // Triangle function
+    return max(0, 1.0 - abs(x));
+}
+
 float hatchingCalculation()
 {
-    vec3 projCoords = gl_FragCoord.xyz / gl_FragCoord.w;
+    vec3 projCoords = hatchpos.xyz / hatchpos.w;
     projCoords = projCoords * 0.5 + 0.5;
-    float sample_depth = texture(hatchingtexture, projCoords);
+    projCoords.z -= projCoords.z * 0.05;
+    float sample_depth = texture(hatchingtexture, projCoords).r;
 
-    // float difference = abs(sample_depth - frag_depth);
+    if (sample_depth < 0.5) {
+        return triangle(gl_FragCoord.x - gl_FragCoord.y);
+    }
 
-    return sample_depth;
+    return 1.0;
 }
 
 void main() {
@@ -191,9 +205,13 @@ void main() {
 
     color = hsv2rgb(color);
 
-    // float hatching = hatchingCalculation();
-    // color = vec3(hatching / 2);
+    float hatching = hatchingCalculation();
+    if (hatching < 1.0) 
+    {
+        vec3 shadow_color = color / vec3(3, 3, 1.5);
+        hatching = (1.0 - hatching) * hatching_intensity;
+        color = mix(color, shadow_color, hatching);
+    }
 
-    // o_Target = vec4(color, 1);
-    o_Target = vec4(vec3(gl_FragCoord.z * 10000000 * gl_FragCoord.w), 1);
+    o_Target = vec4(color, 1);
 }
