@@ -79,13 +79,13 @@ float random(vec3 seed, int i){
 float ShadowCalculation(vec4 fragPosLightSpace)
 {
     float cosTheta = clamp(dot(light_vector, vec3(1)), 0.0, 1.0);
-    float bias = 0.005;// * tan(acos(cosTheta));
-    //bias = clamp(bias, 0.0, 0.05);
+    float bias = 0.005 * tan(acos(cosTheta));
+    bias = clamp(bias, 0.0, 0.05);
 
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
     projCoords = projCoords * 0.5 + 0.5;
     float currentDepth = projCoords.z;
-    // float closestDepth = texture(shadowtexture, projCoords.xyz).r;
+    
     float shadow = 1.0;
     for (int i=0;i<16;i++){
         
@@ -95,9 +95,9 @@ float ShadowCalculation(vec4 fragPosLightSpace)
             shadow-= shadow_intensity / 16.0;
         }
     }
-    // if (projCoords.z > 1.0) {
-    //     shadow = 0.0;
-    // }
+    if (projCoords.z > 1.0) {
+        shadow = 0.0;
+    }
     return shadow;
 }
 

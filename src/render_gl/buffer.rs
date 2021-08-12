@@ -149,11 +149,6 @@ impl Texture {
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, param as i32);
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
-            gl::TexParameteri(
-                gl::TEXTURE_2D,
-                gl::TEXTURE_COMPARE_MODE,
-                gl::COMPARE_REF_TO_TEXTURE as i32,
-            );
         }
     }
 
@@ -174,21 +169,21 @@ impl Texture {
         }
     }
 
-    pub fn bind_to(&self, texture_unit: gl::types::GLenum) {
-        unsafe {
-            gl::ActiveTexture(texture_unit);
-            gl::BindTexture(gl::TEXTURE_2D, self.texture_id);
-        }
-    }
-
-    pub fn use_as_shadow(&self) {
+    pub fn set_texture_compare_mode(&self, mode: gl::types::GLenum) {
         self.bind();
         unsafe {
             gl::TexParameteri(
                 gl::TEXTURE_2D,
                 gl::TEXTURE_COMPARE_MODE,
-                gl::COMPARE_REF_TO_TEXTURE as gl::types::GLint,
+                mode as gl::types::GLint,
             );
+        }
+    }
+
+    pub fn bind_to(&self, texture_unit: gl::types::GLenum) {
+        unsafe {
+            gl::ActiveTexture(texture_unit);
+            gl::BindTexture(gl::TEXTURE_2D, self.texture_id);
         }
     }
 

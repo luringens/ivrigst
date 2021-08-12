@@ -353,8 +353,6 @@ impl Model {
             self.ibo.bind();
             self.depth_map.bind_to(gl::TEXTURE0);
             self.hatch_map.bind_to(gl::TEXTURE0 + 1);
-            self.depth_map.use_as_shadow();
-            self.hatch_map.use_as_shadow();
             gl::DrawElements(
                 gl::TRIANGLES,
                 self.indices,
