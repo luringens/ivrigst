@@ -17,6 +17,7 @@ const SHADOW_SHADER_PATH: &str = "shaders/shadow";
 const SHADOW_SHADER_NAME: &str = "shadow";
 const HATCHING_SHADER_PATH: &str = "shaders/hatching";
 const HATCHING_SHADER_NAME: &str = "hatching";
+const HATCHING_FAR_PLANE: f32 = 500.0;
 const SHADOW_WIDTH: gl::types::GLsizei = 2048;
 const SHADOW_HEIGHT: gl::types::GLsizei = 2048;
 const TEXTURE_UNIT_SHADOW: gl::types::GLenum = gl::TEXTURE0;
@@ -62,6 +63,7 @@ pub struct Attributes {
     pub hatching_frequency: u32,
     pub hatching_steps: u32,
     pub hatching_intensity: f32,
+    pub replace_shadows_with_hatching: bool,
 }
 
 impl Default for Attributes {
@@ -85,6 +87,7 @@ impl Default for Attributes {
             hatching_steps: 200,
             hatching_frequency: 6,
             hatching_intensity: 0.5,
+            replace_shadows_with_hatching: false,
         }
     }
 }
@@ -111,7 +114,7 @@ impl Model {
         let program = render_gl::Program::from_res(res, MAIN_SHADER_PATH)?;
 
         let model = res
-            .load_model("model.obj")
+            .load_model("169s.obj")
             .context("Failed to load model.")?;
 
         let mut min = na::Vector3::from_element(f32::MAX);
@@ -290,6 +293,12 @@ impl Model {
                 self.program
                     .set_uniform_ui("hatching_frequency", new.hatching_frequency)
             }
+            if new.replace_shadows_with_hatching != old.replace_shadows_with_hatching {
+                self.program.set_uniform_ui(
+                    "replace_shadows_with_hatching",
+                    new.replace_shadows_with_hatching as u32,
+                )
+            }
         }
         self.program.unset_used();
         self.attributes = new;
@@ -323,6 +332,10 @@ impl Model {
                 .set_uniform_f("hatching_intensity", att.hatching_intensity);
             self.program
                 .set_uniform_ui("hatching_frequency", att.hatching_frequency);
+            self.program.set_uniform_ui(
+                "replace_shadows_with_hatching",
+                att.replace_shadows_with_hatching as u32,
+            );
         }
         self.program.unset_used();
     }
@@ -334,7 +347,7 @@ impl Model {
     pub fn render(&self, viewport: &Viewport) {
         unsafe {
             let (light_vector, light_space_matrix) = self.render_shadowmap();
-            let hatch_space_matrix = self.render_hatchmap();
+            let hatch_space_matrix = self.render_hatchmap(&viewport);
 
             // Main render of model using shadows.
             self.program.set_used();
@@ -346,6 +359,8 @@ impl Model {
                 "light_vector",
                 (light_vector[0], light_vector[1], light_vector[2]),
             );
+            self.program
+                .set_uniform_f("hatching_far_plane", HATCHING_FAR_PLANE);
             gl::Enable(gl::CULL_FACE);
             gl::CullFace(gl::BACK);
             viewport.set_used();
@@ -353,6 +368,12 @@ impl Model {
             self.ibo.bind();
             self.depth_map.bind_to(gl::TEXTURE0);
             self.hatch_map.bind_to(gl::TEXTURE0 + 1);
+            if self.attributes.replace_shadows_with_hatching {
+                self.hatch_map
+                    .set_texture_compare_mode(gl::COMPARE_REF_TO_TEXTURE);
+            } else {
+                self.hatch_map.set_texture_compare_mode(gl::NONE);
+            }
             gl::DrawElements(
                 gl::TRIANGLES,
                 self.indices,
@@ -422,6 +443,7 @@ impl Model {
 
     unsafe fn render_hatchmap(
         &self,
+        _viewport: &Viewport,
     ) -> na::Matrix<f32, na::Const<4>, na::Const<4>, na::ArrayStorage<f32, 4, 4>> {
         self.hatching_program.set_used();
         self.hatching_program
@@ -433,19 +455,27 @@ impl Model {
         let near_plane = 1.0;
         let far_plane = 500.0;
         let bound = 250.0;
+        // let aspect = viewport.size().0 as f32 / viewport.size().1 as f32;
         let hatch_projection =
             na::Orthographic3::new(-bound, bound, -bound, bound, near_plane, far_plane);
+        // na::Perspective3::new(
+        //     aspect,
+        //     std::f32::consts::PI / 4.0,
+        //     near_plane,
+        //     HATCHING_FAR_PLANE,
+        // );
         let hatch_pos = self.attributes.camera_position;
-        let light = hatch_pos.normalize() * self.attributes.camera_position.magnitude();
         let center = na::Point3::new(0.0, 0.0, 0.0);
         let hatch_view = na::Matrix4::look_at_rh(
-            &na::Point3::from(light),
+            &na::Point3::from(hatch_pos),
             &center,
             &na::Vector3::new(0.0, 1.0, 0.0),
         );
         let hatch_space_matrix = hatch_projection.to_homogeneous() * hatch_view;
         self.hatching_program
             .set_uniform_matrix4("projection_matrix", &hatch_space_matrix);
+        self.hatching_program
+            .set_uniform_f("far_plane", HATCHING_FAR_PLANE);
 
         gl::Disable(gl::CULL_FACE);
         gl::Disable(gl::BLEND);

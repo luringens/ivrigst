@@ -22,6 +22,7 @@ uniform float shadow_intensity;
 uniform float vertex_color_mix;
 uniform uint hatching_frequency;
 uniform float hatching_intensity;
+uniform bool replace_shadows_with_hatching;
 
 layout(location = 0) in vec3 normal_vector;
 layout(location = 1) in vec3 toon_light_vector;
@@ -113,7 +114,7 @@ float hatchingCalculation()
 {
     vec3 projCoords = hatchpos.xyz / hatchpos.w;
     projCoords = projCoords * 0.5 + 0.5;
-    projCoords.z -= projCoords.z * 0.05;
+    projCoords.z -= 0.03;
     float sample_depth = texture(hatchingtexture, projCoords).r;
 
     if (sample_depth < 0.5) {
@@ -125,7 +126,6 @@ float hatchingCalculation()
 
 void main() {
     vec3 color = mix(color, vertex_color, vertex_color_mix);
-    float shadow = shadow_intensity < 0.005 ? 1.0 : ShadowCalculation(uv);
 
     vec3 toonShadingColor;
     {
@@ -201,16 +201,22 @@ void main() {
     }
 
     // Shadows
-    color.z *= shadow;
+    if (!replace_shadows_with_hatching) {
+        float shadow = shadow_intensity < 0.005 ? 1.0 : ShadowCalculation(uv);
+        color.z *= shadow;
+    }
 
     color = hsv2rgb(color);
 
-    float hatching = hatchingCalculation();
-    if (hatching < 1.0) 
-    {
-        vec3 shadow_color = color / vec3(3, 3, 1.5);
-        hatching = (1.0 - hatching) * hatching_intensity;
-        color = mix(color, shadow_color, hatching);
+    // Hatching
+    if (replace_shadows_with_hatching) {
+        float hatching = hatchingCalculation();
+        if (hatching < 1.0) 
+        {
+            vec3 shadow_color = color / vec3(3, 3, 1.5);
+            hatching = (1.0 - hatching) * hatching_intensity;
+            color = mix(color, shadow_color, hatching);
+        }
     }
 
     o_Target = vec4(color, 1);
