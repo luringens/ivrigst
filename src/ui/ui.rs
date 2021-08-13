@@ -24,6 +24,16 @@ enum Preset {
     PlainAerial,
 }
 
+impl std::fmt::Display for Preset {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        match self {
+            Preset::ToonWithShadow => write!(f, "Toon shading with shadows"),
+            Preset::PseudoChromaDepth => write!(f, "Pseudochroma depth with hatching"),
+            Preset::PlainAerial => write!(f, "Plain shading with aerial distance"),
+        }
+    }
+}
+
 impl UI {
     pub fn new(res: &Resources) -> Result<Self> {
         let renderer = UIRenderer::new(res)?;
@@ -42,22 +52,22 @@ impl UI {
             .collapsible(true)
             .show(ctx, |ui| {
                 egui::ComboBox::from_label("Preset")
-                    .selected_text("Toon shading with shadows")
+                    .selected_text(self.preset.to_string())
                     .show_ui(ui, |ui| {
                         ui.selectable_value(
                             &mut self.preset,
                             Preset::ToonWithShadow,
-                            "Toon shading with shadows",
+                            Preset::ToonWithShadow.to_string(),
                         );
                         ui.selectable_value(
                             &mut self.preset,
                             Preset::PseudoChromaDepth,
-                            "Pseudochroma depth",
+                            Preset::PseudoChromaDepth.to_string(),
                         );
                         ui.selectable_value(
                             &mut self.preset,
                             Preset::PlainAerial,
-                            "Plain shading with aerial distance",
+                            Preset::PlainAerial.to_string(),
                         );
                     });
                 if ui.button("Apply preset").clicked() {
@@ -91,27 +101,27 @@ impl UI {
                             use crate::model::DistanceShadingChannel as DSC;
                             ui.label("Distance shading channel");
                             egui::ComboBox::from_id_source("distance_shading_channel")
-                                .selected_text(format!("{:?}", attr.distance_shading_channel)) // Todo: fix
+                                .selected_text(attr.distance_shading_channel.to_string())
                                 .show_ui(ui, |ui| {
                                     ui.selectable_value(
                                         &mut attr.distance_shading_channel,
                                         DSC::Hue,
-                                        format!("{:?}", DSC::Hue),
+                                        DSC::Hue.to_string(),
                                     );
                                     ui.selectable_value(
                                         &mut attr.distance_shading_channel,
                                         DSC::Saturation,
-                                        format!("{:?}", DSC::Saturation),
+                                        DSC::Saturation.to_string(),
                                     );
                                     ui.selectable_value(
                                         &mut attr.distance_shading_channel,
                                         DSC::Value,
-                                        format!("{:?}", DSC::Value),
+                                        DSC::Value.to_string(),
                                     );
                                     ui.selectable_value(
                                         &mut attr.distance_shading_channel,
                                         DSC::None,
-                                        format!("{:?}", DSC::None),
+                                        DSC::None.to_string(),
                                     );
                                 });
                             ui.end_row();
@@ -147,7 +157,7 @@ impl UI {
                                         ui.label("Hatching depth");
                                         ui.add(egui::Slider::new(
                                             &mut attr.hatching_depth,
-                                            1.0..=4.0,
+                                            0.0..=4.0,
                                         ));
                                         ui.end_row();
 
@@ -266,7 +276,7 @@ impl UI {
                 preset.vertex_color_mix = 1.0;
             }
             Preset::PseudoChromaDepth => {
-                preset.replace_shadows_with_hatching = false;
+                preset.replace_shadows_with_hatching = true;
                 preset.distance_shading_power = 0.8;
                 preset.distance_shading_constrict = 0.8;
                 preset.toon_factor = 0.7;
@@ -274,7 +284,11 @@ impl UI {
                 preset.shadows_follow = true;
                 preset.shadows_orbit_radius = 25.0;
                 preset.shadow_intensity = 0.6;
-                preset.vertex_color_mix = 1.0;
+                preset.vertex_color_mix = 0.0;
+                preset.hatching_depth = 1.5;
+                preset.hatching_steps = 50;
+                preset.hatching_frequency = 4;
+                preset.hatching_intensity = 0.5;
             }
             Preset::PlainAerial => {
                 preset.replace_shadows_with_hatching = false;

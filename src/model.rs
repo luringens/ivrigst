@@ -17,7 +17,7 @@ const SHADOW_SHADER_PATH: &str = "shaders/shadow";
 const SHADOW_SHADER_NAME: &str = "shadow";
 const HATCHING_SHADER_PATH: &str = "shaders/hatching";
 const HATCHING_SHADER_NAME: &str = "hatching";
-const HATCHING_FAR_PLANE: f32 = 500.0;
+const HATCHING_FAR_PLANE: f32 = 1000.0;
 const SHADOW_WIDTH: gl::types::GLsizei = 2048;
 const SHADOW_HEIGHT: gl::types::GLsizei = 2048;
 const TEXTURE_UNIT_SHADOW: gl::types::GLenum = gl::TEXTURE0;
@@ -41,6 +41,17 @@ pub enum DistanceShadingChannel {
     Hue = 1,
     Saturation = 2,
     Value = 3,
+}
+
+impl std::fmt::Display for DistanceShadingChannel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        match self {
+            DistanceShadingChannel::None => write!(f, "None"),
+            DistanceShadingChannel::Hue => write!(f, "Hue"),
+            DistanceShadingChannel::Saturation => write!(f, "Saturation"),
+            DistanceShadingChannel::Value => write!(f, "Value"),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -83,9 +94,9 @@ impl Default for Attributes {
             shadows_orbit_radius: 25.0,
             elapsed: 0.0,
             vertex_color_mix: 1.0,
-            hatching_depth: 2.0,
-            hatching_steps: 200,
-            hatching_frequency: 6,
+            hatching_depth: 1.5,
+            hatching_steps: 50,
+            hatching_frequency: 4,
             hatching_intensity: 0.5,
             replace_shadows_with_hatching: false,
         }
@@ -443,7 +454,7 @@ impl Model {
 
     unsafe fn render_hatchmap(
         &self,
-        _viewport: &Viewport,
+        viewport: &Viewport,
     ) -> na::Matrix<f32, na::Const<4>, na::Const<4>, na::ArrayStorage<f32, 4, 4>> {
         self.hatching_program.set_used();
         self.hatching_program
@@ -452,18 +463,14 @@ impl Model {
             .set_uniform_ui("steps", self.attributes.hatching_steps);
         self.hatch_map_fbo.bind();
 
-        let near_plane = 1.0;
-        let far_plane = 500.0;
-        let bound = 250.0;
-        // let aspect = viewport.size().0 as f32 / viewport.size().1 as f32;
-        let hatch_projection =
-            na::Orthographic3::new(-bound, bound, -bound, bound, near_plane, far_plane);
-        // na::Perspective3::new(
-        //     aspect,
-        //     std::f32::consts::PI / 4.0,
-        //     near_plane,
-        //     HATCHING_FAR_PLANE,
-        // );
+        let near_plane = 0.1;
+        let aspect = viewport.size().0 as f32 / viewport.size().1 as f32;
+        let hatch_projection = na::Perspective3::new(
+            aspect,
+            std::f32::consts::PI / 4.0,
+            near_plane,
+            HATCHING_FAR_PLANE,
+        );
         let hatch_pos = self.attributes.camera_position;
         let center = na::Point3::new(0.0, 0.0, 0.0);
         let hatch_view = na::Matrix4::look_at_rh(
@@ -471,6 +478,7 @@ impl Model {
             &center,
             &na::Vector3::new(0.0, 1.0, 0.0),
         );
+
         let hatch_space_matrix = hatch_projection.to_homogeneous() * hatch_view;
         self.hatching_program
             .set_uniform_matrix4("projection_matrix", &hatch_space_matrix);
