@@ -1,7 +1,7 @@
 mod render;
 mod sdl2_egui_translation;
-mod ui;
+mod ui_builder;
 
 pub use render::UIRenderer;
 pub use sdl2_egui_translation::*;
-pub use ui::{UiActions, UI};
+pub use ui_builder::{UiActions, UI};
