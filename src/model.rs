@@ -117,6 +117,8 @@ pub struct Model {
     depth_map_fbo: FrameBuffer,
     hatch_map: Texture,
     hatch_map_fbo: FrameBuffer,
+    min: na::Vector3<f32>,
+    max: na::Vector3<f32>,
 }
 
 impl Model {
@@ -225,6 +227,8 @@ impl Model {
             ibo,
             indices: model.indices.len() as i32,
             size: max - min,
+            min,
+            max,
             attributes,
             depth_map,
             depth_map_fbo,
@@ -360,8 +364,47 @@ impl Model {
             let (light_vector, light_space_matrix) = self.render_shadowmap();
             let hatch_space_matrix = self.render_hatchmap(viewport);
 
-            // Main render of model using shadows.
+            // Calculate distance shading planes
+            let box_corners = [
+                na::Vector3::new(self.min[0], self.min[1], self.min[2]),
+                na::Vector3::new(self.min[0], self.min[1], self.max[2]),
+                na::Vector3::new(self.min[0], self.max[1], self.min[2]),
+                na::Vector3::new(self.min[0], self.max[1], self.max[2]),
+                na::Vector3::new(self.max[0], self.min[1], self.min[2]),
+                na::Vector3::new(self.max[0], self.min[1], self.max[2]),
+                na::Vector3::new(self.max[0], self.max[1], self.min[2]),
+                na::Vector3::new(self.max[0], self.max[1], self.max[2]),
+            ];
+            let cam = self.attributes.camera_position;
+
+            let closest = box_corners
+                .iter()
+                .min_by(|&a, &b| (a - cam).norm().partial_cmp(&(b - cam).norm()).unwrap())
+                .unwrap();
+            let furthest = box_corners
+                .iter()
+                .max_by(|&a, &b| (a - cam).norm().partial_cmp(&(b - cam).norm()).unwrap())
+                .unwrap();
+            // let closest_projected =
+            //     (self.attributes.projection_matrix * closest.to_homogeneous()).xyz();
+            // let furthest_projected =
+            //     (self.attributes.projection_matrix * furthest.to_homogeneous()).xyz();
+            // let closest_dist = closest_projected.z;
+            // let furthest_dist = furthest_projected.z;
+
             self.program.set_used();
+            self.program.set_uniform_3f(
+                "distance_shading_closest",
+                (closest.x, closest.y, closest.z),
+            );
+            self.program.set_uniform_3f(
+                "distance_shading_furthest",
+                (furthest.x, furthest.y, furthest.z),
+            );
+
+            // Main render of model using shadows.
+            self.program
+                .set_uniform_matrix4("light_space_matrix", &light_space_matrix);
             self.program
                 .set_uniform_matrix4("light_space_matrix", &light_space_matrix);
             self.program

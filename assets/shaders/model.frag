@@ -13,6 +13,8 @@ layout(binding = 1) uniform sampler2DShadow hatchingtexture;
 uniform vec3 camera_position;
 uniform vec3 light_vector;
 uniform vec3 color;
+uniform vec3 distance_shading_closest;
+uniform vec3 distance_shading_furthest;
 uniform float model_size;
 uniform float distance_shading_power;
 uniform uint distance_shading_channel;
@@ -175,9 +177,11 @@ void main() {
     color = mix(standardShadingColor, toonShadingColor, toon_factor);
 
     // Reduce Value of colour based on distance from camera.    
-    float camera_dist = length(camera_position);
-    float near_plane = camera_dist - model_size / 2.0 * distance_shading_constrict;
-    float far_plane = camera_dist + model_size / 2.0 * distance_shading_constrict;
+    // float camera_dist = length(camera_position);
+    // float near_plane = camera_dist - model_size / 2.0 * distance_shading_constrict;
+    // float far_plane = camera_dist + model_size / 2.0 * distance_shading_constrict;
+    float near_plane = length(camera_position - distance_shading_closest);
+    float far_plane = length(camera_position - distance_shading_furthest);
 
     float power = distance_shading_power;
 
@@ -187,7 +191,8 @@ void main() {
     }
 
     // Calculate magnitude of shading.
-    float z = abs(gl_FragCoord.z / gl_FragCoord.w);
+    // float z = abs(gl_FragCoord.z / gl_FragCoord.w);
+    float z = length(camera_position - position_vector);
     float d = 1.0 - min(smoothstep(near_plane, far_plane, z), power);
     color = rgb2hsv(color);
 
