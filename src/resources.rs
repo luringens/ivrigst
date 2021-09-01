@@ -73,6 +73,20 @@ impl Resources {
 
         Ok(model.mesh)
     }
+
+    pub fn list_models(&self) -> Vec<String> {
+        std::fs::read_dir(&self.root_path)
+            .and_then(|readdir| {
+                readdir
+                    .map(|entry| entry.map(|d| d.file_name().to_string_lossy().into_owned()))
+                    .collect::<Result<Vec<_>, _>>()
+            })
+            .unwrap_or(Vec::new())
+            .into_iter()
+            .filter(|entry| entry.ends_with(".obj"))
+            .map(|file| file.trim_end_matches(".obj").to_owned())
+            .collect()
+    }
 }
 
 fn resource_name_to_path(root_dir: &Path, location: &str) -> PathBuf {

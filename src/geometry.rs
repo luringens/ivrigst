@@ -3,6 +3,7 @@ use nalgebra as na;
 
 /// Finds the intersection of the given line and box, both centered at origin.
 /// The order of the two intersections are undefined.
+/// Providing `NaN` values will cause a panic.
 pub fn intersect_box_and_line(line_dir: Vector3<f32>, box_size: Vector3<f32>) -> [Vector3<f32>; 2] {
     let line_dir = line_dir.normalize();
 

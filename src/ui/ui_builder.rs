@@ -11,11 +11,12 @@ use super::UIRenderer;
 pub struct UI {
     pub renderer: UIRenderer,
     preset: Preset,
+    model_files: Vec<String>,
 }
 
-#[derive(Default)]
 pub struct UiActions {
     pub show_debug: bool,
+    pub file_to_load: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -45,7 +46,12 @@ impl UI {
     pub fn new(res: &Resources) -> Result<Self> {
         let renderer = UIRenderer::new(res)?;
         let preset = Preset::ToonWithShadow;
-        Ok(Self { renderer, preset })
+        let model_files = res.list_models();
+        Ok(Self {
+            renderer,
+            preset,
+            model_files,
+        })
     }
 
     pub fn build_ui(
@@ -60,6 +66,18 @@ impl UI {
             .auto_sized()
             .collapsible(true)
             .show(ctx, |ui| {
+                let mut selected_file = "Current file: '".to_string();
+                selected_file.push_str(&ui_actions.file_to_load);
+                selected_file.push('\'');
+                egui::ComboBox::from_id_source("model")
+                    .selected_text(selected_file)
+                    .show_ui(ui, |ui| {
+                        for file in &self.model_files {
+                            ui.selectable_value(&mut ui_actions.file_to_load, file.clone(), file);
+                        }
+                    });
+                ui.end_row();
+
                 if ui.button(Preset::ToonWithShadow.description()).clicked() {
                     self.preset = Preset::ToonWithShadow;
                     attr = self.apply_preset(model);

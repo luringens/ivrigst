@@ -19,6 +19,7 @@ use crate::{model::Model, resources::Resources, ui::UI};
 const ASSETS_PATH: &str = "..\\..\\assets";
 #[cfg(not(debug_assertions))]
 const ASSETS_PATH: &str = "assets";
+const DEFAULT_MODEL_PATH: &str = "model.obj";
 
 fn main() {
     let res =
@@ -43,7 +44,7 @@ fn main() {
     let _gl =
         gl::load_with(|s| video_subsystem.gl_get_proc_address(s) as *const std::os::raw::c_void);
 
-    let mut model = Model::new(&res).expect("Failed to set up model.");
+    let mut model = Model::new(&res, DEFAULT_MODEL_PATH).expect("Failed to set up model.");
     let mut ui = UI::new(&res).expect("Failed to set up UI.");
 
     // set up shared state for window
@@ -67,7 +68,11 @@ fn main() {
     let mut ctx = egui::CtxRef::default();
     let mut first_frame = true;
     let mut mvp_needs_update = true;
-    let mut ui_actions = ui::UiActions::default();
+    let mut current_model_file = DEFAULT_MODEL_PATH.to_owned();
+    let mut ui_actions = ui::UiActions {
+        show_debug: false,
+        file_to_load: DEFAULT_MODEL_PATH.to_owned(),
+    };
 
     let mut event_pump = sdl.event_pump().unwrap();
     'main: loop {
@@ -214,6 +219,17 @@ fn main() {
                 model.get_hatch_texture(),
                 model.get_shadow_texture(),
             );
+        }
+
+        if ui_actions.file_to_load != current_model_file {
+            let mut path = ui_actions.file_to_load.clone();
+            path.push_str(".obj");
+            if let Ok(new_model) = Model::new(&res, &path) {
+                model = new_model;
+                camera.set_dist(model.get_size().magnitude() * 1.2);
+                mvp_needs_update = true;
+                current_model_file = ui_actions.file_to_load.clone();
+            }
         }
 
         window.gl_swap_window();

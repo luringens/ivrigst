@@ -85,7 +85,7 @@ impl Default for Attributes {
             light_position: na::Vector3::new(0.45, 0.25, 0.6),
             color: na::Vector3::new(1.0, 0.56, 0.72),
             model_size: Default::default(),
-            distance_shading_power: 0.8,
+            distance_shading_power: 0.4,
             toon_factor: 0.8,
             distance_shading_channel: DistanceShadingChannel::None,
             shadow_intensity: 0.6,
@@ -119,13 +119,11 @@ pub struct Model {
 }
 
 impl Model {
-    pub fn new(res: &Resources) -> Result<Self> {
+    pub fn new(res: &Resources, filename: &str) -> Result<Self> {
         // set up shader program
         let program = render_gl::Program::from_res(res, MAIN_SHADER_PATH)?;
 
-        let model = res
-            .load_model("169s.obj")
-            .context("Failed to load model.")?;
+        let model = res.load_model(filename).context("Failed to load model.")?;
 
         let mut min = na::Vector3::from_element(f32::MAX);
         let mut max = na::Vector3::from_element(f32::MIN);
