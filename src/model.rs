@@ -23,8 +23,6 @@ const SHADOW_HEIGHT: gl::types::GLsizei = 2048;
 const TEXTURE_UNIT_SHADOW: gl::types::GLenum = gl::TEXTURE0;
 const TEXTURE_UNIT_HATCH: gl::types::GLenum = gl::TEXTURE1;
 
-type Matrix4f32 = na::Matrix<f32, na::Const<4>, na::Const<4>, na::ArrayStorage<f32, 4, 4>>;
-
 #[derive(Copy, Clone, Debug, VertexAttribPointers)]
 #[repr(C, packed)]
 pub struct Vertex {
@@ -400,7 +398,7 @@ impl Model {
         self.vao.unbind();
     }
 
-    unsafe fn render_shadowmap(&self) -> (na::OPoint<f32, na::Const<3>>, Matrix4f32) {
+    unsafe fn render_shadowmap(&self) -> (na::OPoint<f32, na::Const<3>>, na::Matrix4<f32>) {
         gl::Disable(gl::CULL_FACE);
         gl::Disable(gl::BLEND);
         gl::Enable(gl::DEPTH_TEST);
@@ -449,7 +447,7 @@ impl Model {
         (light_vector, light_space_matrix)
     }
 
-    unsafe fn render_hatchmap(&self, viewport: &Viewport) -> Matrix4f32 {
+    unsafe fn render_hatchmap(&self, viewport: &Viewport) -> na::Matrix4<f32> {
         self.hatching_program.set_used();
         self.hatching_program
             .set_uniform_f("hatching_depth", self.attributes.hatching_depth);
