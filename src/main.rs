@@ -1,6 +1,7 @@
 #![allow(clippy::missing_safety_doc)]
 
 mod camera;
+mod geometry;
 mod model;
 pub mod render_gl;
 pub mod resources;

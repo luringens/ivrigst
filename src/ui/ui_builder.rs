@@ -121,13 +121,6 @@ impl UI {
                                 });
                             ui.end_row();
 
-                            ui.label("Distance shading constriction");
-                            ui.add(egui::Slider::new(
-                                &mut attr.distance_shading_constrict,
-                                0.0..=1.0,
-                            ));
-                            ui.end_row();
-
                             ui.label("Distance shading power");
                             ui.scope(|ui| {
                                 ui.set_enabled(attr.distance_shading_channel != DSC::Hue);
@@ -248,8 +241,6 @@ impl UI {
             }
             Preset::PseudoChromaDepth => {
                 preset.replace_shadows_with_hatching = true;
-                preset.distance_shading_power = 0.8;
-                preset.distance_shading_constrict = 0.8;
                 preset.toon_factor = 0.7;
                 preset.distance_shading_channel = DistanceShadingChannel::Hue;
                 preset.vertex_color_mix = 0.0;
@@ -260,8 +251,7 @@ impl UI {
             }
             Preset::HatchedAerial => {
                 preset.replace_shadows_with_hatching = true;
-                preset.distance_shading_power = 0.8;
-                preset.distance_shading_constrict = 0.8;
+                preset.distance_shading_power = 0.4;
                 preset.toon_factor = 0.3;
                 preset.distance_shading_channel = DistanceShadingChannel::Saturation;
                 preset.vertex_color_mix = 1.0;

@@ -1,4 +1,5 @@
 use crate::{
+    geometry::intersect_box_and_line,
     render_gl::{
         self,
         buffer::{self, FrameBuffer, Texture},
@@ -62,7 +63,6 @@ pub struct Attributes {
     pub color: na::Vector3<f32>,
     pub model_size: f32,
     pub distance_shading_power: f32,
-    pub distance_shading_constrict: f32,
     pub toon_factor: f32,
     pub distance_shading_channel: DistanceShadingChannel,
     pub shadow_intensity: f32,
@@ -86,7 +86,6 @@ impl Default for Attributes {
             color: na::Vector3::new(1.0, 0.56, 0.72),
             model_size: Default::default(),
             distance_shading_power: 0.8,
-            distance_shading_constrict: 0.2,
             toon_factor: 0.8,
             distance_shading_channel: DistanceShadingChannel::None,
             shadow_intensity: 0.6,
@@ -117,8 +116,6 @@ pub struct Model {
     depth_map_fbo: FrameBuffer,
     hatch_map: Texture,
     hatch_map_fbo: FrameBuffer,
-    min: na::Vector3<f32>,
-    max: na::Vector3<f32>,
 }
 
 impl Model {
@@ -227,8 +224,6 @@ impl Model {
             ibo,
             indices: model.indices.len() as i32,
             size: max - min,
-            min,
-            max,
             attributes,
             depth_map,
             depth_map_fbo,
@@ -276,12 +271,6 @@ impl Model {
             if (new.distance_shading_power - old.distance_shading_power).abs() < f32::EPSILON {
                 self.program
                     .set_uniform_f("distance_shading_power", new.distance_shading_power);
-            }
-            if (new.distance_shading_constrict - old.distance_shading_constrict).abs()
-                < f32::EPSILON
-            {
-                self.program
-                    .set_uniform_f("distance_shading_constrict", new.distance_shading_constrict);
             }
             if (new.toon_factor - old.toon_factor).abs() < f32::EPSILON {
                 self.program.set_uniform_f("toon_factor", new.toon_factor);
@@ -332,8 +321,6 @@ impl Model {
             self.program.set_uniform_f("model_size", att.model_size);
             self.program
                 .set_uniform_f("distance_shading_power", att.distance_shading_power);
-            self.program
-                .set_uniform_f("distance_shading_constrict", att.distance_shading_constrict);
             self.program.set_uniform_f("toon_factor", att.toon_factor);
             self.program.set_uniform_ui(
                 "distance_shading_channel",
@@ -365,33 +352,16 @@ impl Model {
             let hatch_space_matrix = self.render_hatchmap(viewport);
 
             // Calculate distance shading planes
-            let box_corners = [
-                na::Vector3::new(self.min[0], self.min[1], self.min[2]),
-                na::Vector3::new(self.min[0], self.min[1], self.max[2]),
-                na::Vector3::new(self.min[0], self.max[1], self.min[2]),
-                na::Vector3::new(self.min[0], self.max[1], self.max[2]),
-                na::Vector3::new(self.max[0], self.min[1], self.min[2]),
-                na::Vector3::new(self.max[0], self.min[1], self.max[2]),
-                na::Vector3::new(self.max[0], self.max[1], self.min[2]),
-                na::Vector3::new(self.max[0], self.max[1], self.max[2]),
-            ];
             let cam = self.attributes.camera_position;
-
-            let closest = box_corners
-                .iter()
-                .min_by(|&a, &b| (a - cam).norm().partial_cmp(&(b - cam).norm()).unwrap())
-                .unwrap();
-            let furthest = box_corners
-                .iter()
-                .max_by(|&a, &b| (a - cam).norm().partial_cmp(&(b - cam).norm()).unwrap())
-                .unwrap();
-            // let closest_projected =
-            //     (self.attributes.projection_matrix * closest.to_homogeneous()).xyz();
-            // let furthest_projected =
-            //     (self.attributes.projection_matrix * furthest.to_homogeneous()).xyz();
-            // let closest_dist = closest_projected.z;
-            // let furthest_dist = furthest_projected.z;
-
+            let mut intersections = intersect_box_and_line(cam, self.size).to_vec();
+            intersections.sort_unstable_by(|&a, &b| {
+                (cam - a)
+                    .norm()
+                    .partial_cmp(&(cam - b).norm())
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
+            let closest = intersections[0];
+            let furthest = intersections[1];
             self.program.set_used();
             self.program.set_uniform_3f(
                 "distance_shading_closest",
