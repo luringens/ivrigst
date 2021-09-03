@@ -193,7 +193,7 @@ void main() {
     // Calculate magnitude of shading.
     // float z = abs(gl_FragCoord.z / gl_FragCoord.w);
     float z = length(camera_position - position_vector);
-    float d = 1.0 - min(smoothstep(near_plane, far_plane, z), power);
+    float d = 1.0 - smoothstep(near_plane, far_plane, z) * power;
     color = rgb2hsv(color);
 
     // Perform shading on channel of choice.
