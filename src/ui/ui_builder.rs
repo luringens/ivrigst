@@ -57,18 +57,21 @@ impl UI {
     pub fn build_ui(
         &mut self,
         ctx: &egui::CtxRef,
-        model: &mut crate::Model,
+        model: &mut Option<crate::Model>,
         ui_actions: &mut UiActions,
     ) {
-        let mut attr = model.get_attributes().clone();
-
         egui::Window::new("Settings")
             .auto_sized()
             .collapsible(true)
             .show(ctx, |ui| {
-                let mut selected_file = "Current file: '".to_string();
-                selected_file.push_str(&ui_actions.file_to_load);
-                selected_file.push('\'');
+                let mut selected_file = String::new();
+                if ui_actions.file_to_load.is_empty() {
+                    selected_file.push_str("No file loaded");
+                } else {
+                    selected_file.push_str("Current file: '");
+                    selected_file.push_str(&ui_actions.file_to_load);
+                    selected_file.push('\'');
+                }
                 egui::ComboBox::from_id_source("model")
                     .selected_text(selected_file)
                     .show_ui(ui, |ui| {
@@ -78,171 +81,181 @@ impl UI {
                     });
                 ui.end_row();
 
-                if ui.button(Preset::ToonWithShadow.description()).clicked() {
-                    self.preset = Preset::ToonWithShadow;
-                    attr = self.apply_preset(model);
-                } else if ui.button(Preset::PseudoChromaDepth.description()).clicked() {
-                    self.preset = Preset::PseudoChromaDepth;
-                    attr = self.apply_preset(model);
-                } else if ui.button(Preset::HatchedAerial.description()).clicked() {
-                    self.preset = Preset::HatchedAerial;
-                    attr = self.apply_preset(model);
-                }
+                if let Some(model) = model {
+                    let mut attr = model.get_attributes().clone();
 
-                ui.collapsing("Advanced", |ui| {
-                    egui::Grid::new("settings_grid")
-                        .striped(true)
-                        .spacing([40.0, 4.0])
-                        .show(ui, |ui| {
-                            // Colour widget.
-                            ui.label("Model base colour");
-                            let mut color = [attr.color[0], attr.color[1], attr.color[2]];
-                            ui.color_edit_button_rgb(&mut color);
-                            attr.color = na::Vector3::from(color);
-                            ui.end_row();
+                    if ui.button(Preset::ToonWithShadow.description()).clicked() {
+                        self.preset = Preset::ToonWithShadow;
+                        attr = self.apply_preset(model);
+                    } else if ui.button(Preset::PseudoChromaDepth.description()).clicked() {
+                        self.preset = Preset::PseudoChromaDepth;
+                        attr = self.apply_preset(model);
+                    } else if ui.button(Preset::HatchedAerial.description()).clicked() {
+                        self.preset = Preset::HatchedAerial;
+                        attr = self.apply_preset(model);
+                    }
 
-                            ui.label("Model colouring mix");
-                            ui.add(egui::Slider::new(&mut attr.vertex_color_mix, 0.0..=1.0));
-                            ui.end_row();
+                    ui.collapsing("Advanced", |ui| {
+                        egui::Grid::new("settings_grid")
+                            .striped(true)
+                            .spacing([40.0, 4.0])
+                            .show(ui, |ui| {
+                                // Colour widget.
+                                ui.label("Model base colour");
+                                let mut color = [attr.color[0], attr.color[1], attr.color[2]];
+                                ui.color_edit_button_rgb(&mut color);
+                                attr.color = na::Vector3::from(color);
+                                ui.end_row();
 
-                            // Toon shading enable/disable
-                            ui.label("Toon shading factor");
-                            ui.add(egui::Slider::new(&mut attr.toon_factor, 0.0..=1.0));
-                            ui.end_row();
+                                ui.label("Model colouring mix");
+                                ui.add(egui::Slider::new(&mut attr.vertex_color_mix, 0.0..=1.0));
+                                ui.end_row();
 
-                            // Distance shading parameters widget.
-                            use crate::model::DistanceShadingChannel as DSC;
-                            ui.label("Distance shading channel");
-                            egui::ComboBox::from_id_source("distance_shading_channel")
-                                .selected_text(attr.distance_shading_channel.to_string())
-                                .show_ui(ui, |ui| {
-                                    ui.selectable_value(
-                                        &mut attr.distance_shading_channel,
-                                        DSC::Hue,
-                                        DSC::Hue.to_string(),
-                                    );
-                                    ui.selectable_value(
-                                        &mut attr.distance_shading_channel,
-                                        DSC::Saturation,
-                                        DSC::Saturation.to_string(),
-                                    );
-                                    ui.selectable_value(
-                                        &mut attr.distance_shading_channel,
-                                        DSC::Value,
-                                        DSC::Value.to_string(),
-                                    );
-                                    ui.selectable_value(
-                                        &mut attr.distance_shading_channel,
-                                        DSC::None,
-                                        DSC::None.to_string(),
-                                    );
+                                // Toon shading enable/disable
+                                ui.label("Toon shading factor");
+                                ui.add(egui::Slider::new(&mut attr.toon_factor, 0.0..=1.0));
+                                ui.end_row();
+
+                                // Distance shading parameters widget.
+                                use crate::model::DistanceShadingChannel as DSC;
+                                ui.label("Distance shading channel");
+                                egui::ComboBox::from_id_source("distance_shading_channel")
+                                    .selected_text(attr.distance_shading_channel.to_string())
+                                    .show_ui(ui, |ui| {
+                                        ui.selectable_value(
+                                            &mut attr.distance_shading_channel,
+                                            DSC::Hue,
+                                            DSC::Hue.to_string(),
+                                        );
+                                        ui.selectable_value(
+                                            &mut attr.distance_shading_channel,
+                                            DSC::Saturation,
+                                            DSC::Saturation.to_string(),
+                                        );
+                                        ui.selectable_value(
+                                            &mut attr.distance_shading_channel,
+                                            DSC::Value,
+                                            DSC::Value.to_string(),
+                                        );
+                                        ui.selectable_value(
+                                            &mut attr.distance_shading_channel,
+                                            DSC::None,
+                                            DSC::None.to_string(),
+                                        );
+                                    });
+                                ui.end_row();
+
+                                ui.label("Distance shading power");
+                                ui.scope(|ui| {
+                                    ui.set_enabled(attr.distance_shading_channel != DSC::Hue);
+                                    ui.add(egui::Slider::new(
+                                        &mut attr.distance_shading_power,
+                                        0.0..=1.0,
+                                    ))
+                                    .on_disabled_hover_text("Not used when channel is set to Hue.");
                                 });
-                            ui.end_row();
+                                ui.end_row();
 
-                            ui.label("Distance shading power");
-                            ui.scope(|ui| {
-                                ui.set_enabled(attr.distance_shading_channel != DSC::Hue);
-                                ui.add(egui::Slider::new(
-                                    &mut attr.distance_shading_power,
-                                    0.0..=1.0,
-                                ))
-                                .on_disabled_hover_text("Not used when channel is set to Hue.");
+                                ui.label("Display shader buffers");
+                                ui.checkbox(&mut ui_actions.show_debug, "");
+                                ui.end_row();
+
+                                ui.label("Use hatching instead of shadows");
+                                ui.checkbox(&mut attr.replace_shadows_with_hatching, "");
+                                ui.end_row();
                             });
-                            ui.end_row();
 
-                            ui.label("Display shader buffers");
-                            ui.checkbox(&mut ui_actions.show_debug, "");
-                            ui.end_row();
+                        ui.collapsing("Hatching settings", |ui| {
+                            egui::Grid::new("hatching_settings_grid")
+                                .striped(true)
+                                .spacing([40.0, 4.0])
+                                .show(ui, |ui| {
+                                    ui.set_enabled(attr.replace_shadows_with_hatching);
+                                    ui.label("Hatching depth");
+                                    ui.add(egui::Slider::new(&mut attr.hatching_depth, 0.0..=4.0));
+                                    ui.end_row();
 
-                            ui.label("Use hatching instead of shadows");
-                            ui.checkbox(&mut attr.replace_shadows_with_hatching, "");
-                            ui.end_row();
+                                    ui.label("Hatching steps");
+                                    ui.add(egui::Slider::new(&mut attr.hatching_steps, 1..=250));
+                                    ui.end_row();
+
+                                    ui.label("Hatching frequency");
+                                    ui.add(egui::Slider::new(&mut attr.hatching_frequency, 1..=50));
+                                    ui.end_row();
+
+                                    ui.label("Hatching intensity");
+                                    ui.add(egui::Slider::new(
+                                        &mut attr.hatching_intensity,
+                                        0.0..=1.0,
+                                    ));
+                                    ui.end_row();
+                                })
                         });
 
-                    ui.collapsing("Hatching settings", |ui| {
-                        egui::Grid::new("hatching_settings_grid")
-                            .striped(true)
-                            .spacing([40.0, 4.0])
-                            .show(ui, |ui| {
-                                ui.set_enabled(attr.replace_shadows_with_hatching);
-                                ui.label("Hatching depth");
-                                ui.add(egui::Slider::new(&mut attr.hatching_depth, 0.0..=4.0));
-                                ui.end_row();
+                        ui.collapsing("Shadow settings", |ui| {
+                            egui::Grid::new("shadow_settings_grid")
+                                .striped(true)
+                                .spacing([40.0, 4.0])
+                                .show(ui, |ui| {
+                                    ui.set_enabled(!attr.replace_shadows_with_hatching);
+                                    ui.label("Shadow intensity");
+                                    ui.add(egui::Slider::new(
+                                        &mut attr.shadow_intensity,
+                                        0.0..=1.0,
+                                    ));
+                                    ui.end_row();
 
-                                ui.label("Hatching steps");
-                                ui.add(egui::Slider::new(&mut attr.hatching_steps, 1..=250));
-                                ui.end_row();
+                                    ui.label("Light follows camera");
+                                    ui.checkbox(&mut attr.shadows_follow, "");
+                                    ui.end_row();
 
-                                ui.label("Hatching frequency");
-                                ui.add(egui::Slider::new(&mut attr.hatching_frequency, 1..=50));
-                                ui.end_row();
-
-                                ui.label("Hatching intensity");
-                                ui.add(egui::Slider::new(&mut attr.hatching_intensity, 0.0..=1.0));
-                                ui.end_row();
-                            })
+                                    ui.label("Light X");
+                                    ui.scope(|ui| {
+                                        ui.set_enabled(!attr.shadows_follow);
+                                        ui.add(egui::Slider::new(
+                                            &mut attr.light_position[0],
+                                            -1.0..=1.0,
+                                        ))
+                                        .on_disabled_hover_text("Disabled while following camera.");
+                                    });
+                                    ui.end_row();
+                                    ui.label("Light Y");
+                                    ui.scope(|ui| {
+                                        ui.set_enabled(!attr.shadows_follow);
+                                        ui.add(egui::Slider::new(
+                                            &mut attr.light_position[1],
+                                            -1.0..=1.0,
+                                        ))
+                                        .on_disabled_hover_text("Disabled while following camera.");
+                                    });
+                                    ui.end_row();
+                                    ui.label("Light Z");
+                                    ui.scope(|ui| {
+                                        ui.set_enabled(!attr.shadows_follow);
+                                        ui.add(egui::Slider::new(
+                                            &mut attr.light_position[2],
+                                            -1.0..=1.0,
+                                        ))
+                                        .on_disabled_hover_text("Disabled while following camera.");
+                                    });
+                                    ui.end_row();
+                                    ui.label("Light orbit distance");
+                                    ui.add(egui::Slider::new(
+                                        &mut attr.shadows_orbit_radius,
+                                        0.0..=100.0,
+                                    ));
+                                    ui.end_row();
+                                })
+                        });
                     });
 
-                    ui.collapsing("Shadow settings", |ui| {
-                        egui::Grid::new("shadow_settings_grid")
-                            .striped(true)
-                            .spacing([40.0, 4.0])
-                            .show(ui, |ui| {
-                                ui.set_enabled(!attr.replace_shadows_with_hatching);
-                                ui.label("Shadow intensity");
-                                ui.add(egui::Slider::new(&mut attr.shadow_intensity, 0.0..=1.0));
-                                ui.end_row();
-
-                                ui.label("Light follows camera");
-                                ui.checkbox(&mut attr.shadows_follow, "");
-                                ui.end_row();
-
-                                ui.label("Light X");
-                                ui.scope(|ui| {
-                                    ui.set_enabled(!attr.shadows_follow);
-                                    ui.add(egui::Slider::new(
-                                        &mut attr.light_position[0],
-                                        -1.0..=1.0,
-                                    ))
-                                    .on_disabled_hover_text("Disabled while following camera.");
-                                });
-                                ui.end_row();
-                                ui.label("Light Y");
-                                ui.scope(|ui| {
-                                    ui.set_enabled(!attr.shadows_follow);
-                                    ui.add(egui::Slider::new(
-                                        &mut attr.light_position[1],
-                                        -1.0..=1.0,
-                                    ))
-                                    .on_disabled_hover_text("Disabled while following camera.");
-                                });
-                                ui.end_row();
-                                ui.label("Light Z");
-                                ui.scope(|ui| {
-                                    ui.set_enabled(!attr.shadows_follow);
-                                    ui.add(egui::Slider::new(
-                                        &mut attr.light_position[2],
-                                        -1.0..=1.0,
-                                    ))
-                                    .on_disabled_hover_text("Disabled while following camera.");
-                                });
-                                ui.end_row();
-                                ui.label("Light orbit distance");
-                                ui.add(egui::Slider::new(
-                                    &mut attr.shadows_orbit_radius,
-                                    0.0..=100.0,
-                                ));
-                                ui.end_row();
-                            })
+                    ui.horizontal(|ui| {
+                        ui.label("Read more at:");
+                        ui.add(egui::Hyperlink::new("https://github.com/stisol/rmedvis"));
                     });
-                });
-
-                ui.horizontal(|ui| {
-                    ui.label("Read more at:");
-                    ui.add(egui::Hyperlink::new("https://github.com/stisol/rmedvis"));
-                });
+                    model.set_attributes(attr);
+                }
             });
-        model.set_attributes(attr);
     }
 
     fn apply_preset(&self, model: &mut crate::Model) -> Attributes {

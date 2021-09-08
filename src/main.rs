@@ -44,7 +44,7 @@ fn main() {
     let _gl =
         gl::load_with(|s| video_subsystem.gl_get_proc_address(s) as *const std::os::raw::c_void);
 
-    let mut model = Model::new(&res, DEFAULT_MODEL_PATH).expect("Failed to set up model.");
+    let mut model = Model::new(&res, DEFAULT_MODEL_PATH).ok();
     let mut ui = UI::new(&res).expect("Failed to set up UI.");
 
     // set up shared state for window
@@ -57,7 +57,12 @@ fn main() {
     // Camera and projection
     let model_isometry = na::Isometry3::new(na::Vector3::zeros(), na::zero());
     let mut camera = camera::Camera::new();
-    camera.set_dist(model.get_size().magnitude() * 1.2);
+    camera.set_dist(
+        model
+            .as_ref()
+            .map(|m| m.get_size().magnitude() * 1.2)
+            .unwrap_or(100.0),
+    );
 
     render_gl::check_gl_error();
 
@@ -68,10 +73,13 @@ fn main() {
     let mut ctx = egui::CtxRef::default();
     let mut first_frame = true;
     let mut mvp_needs_update = true;
-    let mut current_model_file = DEFAULT_MODEL_PATH.to_owned();
+    let mut current_model_file = match model {
+        Some(_) => DEFAULT_MODEL_PATH.to_owned(),
+        None => String::new(),
+    };
     let mut ui_actions = ui::UiActions {
         show_debug: false,
-        file_to_load: DEFAULT_MODEL_PATH.to_owned(),
+        file_to_load: current_model_file.clone(),
     };
 
     let mut event_pump = sdl.event_pump().unwrap();
@@ -178,7 +186,8 @@ fn main() {
         color_buffer.clear();
 
         // Update camera if necessary.
-        if mvp_needs_update {
+        if mvp_needs_update && model.is_some() {
+            let model = model.as_mut().unwrap();
             let mut attr = model.get_attributes().clone();
 
             let aspect = viewport.size().0 as f32 / viewport.size().1 as f32;
@@ -190,12 +199,13 @@ fn main() {
             mvp_needs_update = false;
         }
 
-        let elapsed = time.elapsed();
-        let mut attr = model.get_attributes().clone();
-        attr.elapsed = elapsed.as_millis() as f32;
-        model.set_attributes(attr);
-
-        model.render(&viewport);
+        if let Some(model) = model.as_mut() {
+            let elapsed = time.elapsed();
+            let mut attr = model.get_attributes().clone();
+            attr.elapsed = elapsed.as_millis() as f32;
+            model.set_attributes(attr);
+            model.render(&viewport);
+        }
 
         // The egui texture isn't available until one frame has passed, so we've got to do it here.
         if first_frame {
@@ -213,20 +223,22 @@ fn main() {
                 .render(&mesh.vertices, &mesh.indices, clip_rect, viewport.size());
         }
 
-        if ui_actions.show_debug {
-            texture_tester.render(
-                &viewport,
-                model.get_hatch_texture(),
-                model.get_shadow_texture(),
-            );
+        if let Some(model) = model.as_mut() {
+            if ui_actions.show_debug {
+                texture_tester.render(
+                    &viewport,
+                    model.get_hatch_texture(),
+                    model.get_shadow_texture(),
+                );
+            }
         }
 
         if ui_actions.file_to_load != current_model_file {
             let mut path = ui_actions.file_to_load.clone();
             path.push_str(".obj");
             if let Ok(new_model) = Model::new(&res, &path) {
-                model = new_model;
-                camera.set_dist(model.get_size().magnitude() * 1.2);
+                camera.set_dist(new_model.get_size().magnitude() * 1.2);
+                model = Some(new_model);
                 mvp_needs_update = true;
                 current_model_file = ui_actions.file_to_load.clone();
             }
@@ -239,7 +251,9 @@ fn main() {
         for path in res.updated_paths() {
             eprintln!("Path updated: {}", path.to_string_lossy());
             ui.renderer.check_shader_update(&path, &res);
-            model.check_shader_update(&path, &res);
+            if let Some(model) = model.as_mut() {
+                model.check_shader_update(&path, &res);
+            }
             texture_tester.check_shader_update(&path, &res);
         }
     }
