@@ -3,6 +3,11 @@ use core::f32;
 use na::Point3;
 use nalgebra as na;
 
+/// Avoids a camera distance of zero, messing up math elsewhere.
+const MIN_ZOOM: f32 = 1.0;
+/// Reasonable far plane distance.
+const MAX_ZOOM: f32 = 400.0;
+
 pub struct Camera {
     fov: f32,
     mousedown: bool,
@@ -61,7 +66,8 @@ impl Camera {
     }
 
     pub fn mousewheel(&mut self, y: i32) {
-        self.dist = (self.dist - 2.0 * y as f32).clamp(0.0, f32::MAX);
+        self.dist = (self.dist - 2.0 * y as f32).clamp(MIN_ZOOM, MAX_ZOOM);
+        dbg!(&self.dist);
     }
 
     pub fn set_dist(&mut self, dist: f32) {

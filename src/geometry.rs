@@ -3,9 +3,13 @@ use nalgebra as na;
 
 /// Finds the intersection of the given line and box, both centered at origin.
 /// The order of the two intersections are undefined.
-/// Providing `NaN` values will cause a panic.
+/// Providing zero or abnormal float values will make the function return zero
+/// vectors.
 pub fn intersect_box_and_line(line_dir: Vector3<f32>, box_size: Vector3<f32>) -> [Vector3<f32>; 2] {
-    let line_dir = line_dir.normalize();
+    // Check for valid args.
+    if !line_dir.sum().is_normal() || !box_size.sum().is_normal() {
+        return [Vector3::zeros(), Vector3::zeros()];
+    }
 
     let plane_centers = [
         Vector3::new(box_size.x / 2.0, 0.0, 0.0),
@@ -72,6 +76,24 @@ mod tests {
         let plane_normal = Vector3::new(0.0, 0.0, 1.0);
         let result = intersect_plane_and_line(ray_vector, plane_point, plane_normal);
         let expect = Vector3::new(0.0, 0.0, 1.0);
+        assert_eq!(result, expect);
+    }
+
+    #[test]
+    fn handle_nan() {
+        let ray_vector = Vector3::new(f32::NAN, f32::NAN, f32::NAN);
+        let box_sixe = Vector3::new(f32::NAN, f32::NAN, f32::NAN);
+        let result = intersect_box_and_line(ray_vector, box_sixe);
+        let expect = [Vector3::zeros(), Vector3::zeros()];
+        assert_eq!(result, expect);
+    }
+
+    #[test]
+    fn handle_zero() {
+        let ray_vector = Vector3::new(0.0, 0.0, 0.0);
+        let box_sixe = Vector3::new(0.0, 0.0, 0.0);
+        let result = intersect_box_and_line(ray_vector, box_sixe);
+        let expect = [Vector3::zeros(), Vector3::zeros()];
         assert_eq!(result, expect);
     }
 }
