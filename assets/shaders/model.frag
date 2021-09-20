@@ -201,6 +201,8 @@ void main() {
         color.x = d;
     }
     else if (distance_shading_channel == DSC_SATURATION) {
+        // Increase base saturation before scaling it.
+        color.y = min(1.0, color.y + (1.0 - color.y) / 2);
         color.y *= d;
     }
     else if (distance_shading_channel == DSC_VALUE) {
