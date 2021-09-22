@@ -66,8 +66,7 @@ impl Camera {
     }
 
     pub fn mousewheel(&mut self, y: i32) {
-        self.dist = (self.dist - 2.0 * y as f32).clamp(MIN_ZOOM, MAX_ZOOM);
-        dbg!(&self.dist);
+        self.dist = (self.dist - 3.0 * y as f32).clamp(MIN_ZOOM, MAX_ZOOM);
     }
 
     pub fn set_dist(&mut self, dist: f32) {
