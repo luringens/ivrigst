@@ -44,6 +44,12 @@ pub enum DistanceShadingChannel {
     Value = 3,
 }
 
+impl Default for DistanceShadingChannel {
+    fn default() -> Self {
+        DistanceShadingChannel::None
+    }
+}
+
 impl std::fmt::Display for DistanceShadingChannel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
@@ -86,7 +92,7 @@ impl Default for Attributes {
             color: na::Vector3::new(1.0, 0.56, 0.72),
             model_size: Default::default(),
             distance_shading_power: 0.4,
-            toon_factor: 0.8,
+            toon_factor: 0.7,
             distance_shading_channel: DistanceShadingChannel::None,
             shadow_intensity: 0.6,
             shadows_follow: false,
@@ -97,7 +103,7 @@ impl Default for Attributes {
             hatching_steps: 150,
             hatching_frequency: 4,
             hatching_intensity: 0.5,
-            replace_shadows_with_hatching: false,
+            replace_shadows_with_hatching: true,
         }
     }
 }

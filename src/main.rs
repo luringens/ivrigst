@@ -46,6 +46,9 @@ fn main() {
 
     let mut model = Model::new(&res, DEFAULT_MODEL_PATH).ok();
     let mut ui = UI::new(&res).expect("Failed to set up UI.");
+    if let Some(model) = model.as_mut() {
+        ui.apply_preset(model);
+    }
 
     // set up shared state for window
     let mut viewport =
@@ -236,7 +239,8 @@ fn main() {
         if ui_actions.file_to_load != current_model_file {
             let mut path = ui_actions.file_to_load.clone();
             path.push_str(".obj");
-            if let Ok(new_model) = Model::new(&res, &path) {
+            if let Ok(mut new_model) = Model::new(&res, &path) {
+                ui.apply_preset(&mut new_model);
                 camera.set_dist(new_model.get_size().magnitude() * 1.2);
                 model = Some(new_model);
                 mvp_needs_update = true;
