@@ -4,6 +4,7 @@
 #define DSC_HUE 1
 #define DSC_SATURATION 2
 #define DSC_VALUE 3
+#define M_PI 3.141592653589793;
 
 layout(location = 0) out vec4 o_Target;
 
@@ -147,16 +148,16 @@ void main() {
 
     vec3 standardShadingColor;
     {
-        float ambientReflection = 0.3;
+        float ambientReflection = 0.2;
         float ambientIntensity = 1;
 
-        float diffuseReflection = 0.5;
+        float diffuseReflection = 0.8;
         float diffuseIntensity = 1;
 
-        float specularReflection = 0.9;
+        float specularReflection = 0.1;
         float specularIntensity = 1;
 
-        float shininess = 5;
+        float shininess = 10;
 
         // Vector to camera
         vec3 v = normalize(camera_position - position_vector);
@@ -169,10 +170,25 @@ void main() {
         vec3 np = 2 * normalize(dot(lm, normal_vector) * normal_vector);
         vec3 rm = normalize(np - lm);
 
-        // Light intensity
-        float ip = ambientReflection * ambientIntensity + (diffuseReflection * diffuseIntensity * dot(lm, normal_vector) + specularReflection * specularIntensity * pow(max(0, min(1, dot(rm, v))), shininess));
 
-        standardShadingColor = ip * color.xyz;
+        // Oren-Nayar (https://garykeen27.wixsite.com/portfolio/oren-nayar-shading)
+        float pi = 3.141592653589793;
+        float roughness = 0.3;
+        float A = 1 - 0.5 * pow(roughness, 2) / (pow(roughness, 2) + 0.33);
+        float B = 0.45 * pow(roughness, 2) / (pow(roughness, 2) + 0.09);
+        float NdotL = clamp(dot(normal_vector, lm), 0.0, 1.0);
+        float angleLN = acos(NdotL);
+        float NdotV = clamp(dot(normal_vector, v), 0.0, 1.0);
+        float angleVN = acos(NdotV);
+        float alpha = max(angleVN, angleLN);
+        float beta = min(angleVN, angleLN);        
+        float orenNayar = NdotL * (A + (B * max(0, cos(angleVN - angleLN)) * sin(alpha) * tan(beta)));
+        diffuseIntensity = orenNayar;
+        
+        // Light intensity
+        float ip = ambientReflection * ambientIntensity + diffuseReflection * diffuseIntensity * dot(lm, normal_vector) + specularReflection * specularIntensity * pow(max(0, min(1, dot(rm, v))), shininess);
+
+        standardShadingColor = ip * vertex_color;
     }
     color = mix(standardShadingColor, toonShadingColor, toon_factor);
 
