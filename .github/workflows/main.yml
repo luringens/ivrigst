@@ -34,6 +34,11 @@ jobs:
           profile: ${{ env.TOOLCHAIN_PROFILE }}
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           override: true
+      - name: Install X11 dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --allow-unauthenticated -y -qq \
+            libxcb-shape0-dev libxcb-xfixes0-dev
       - name: Run cargo test
         uses: actions-rs/cargo@v1
         with:
