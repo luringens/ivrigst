@@ -80,7 +80,7 @@ impl Resources {
                     .map(|entry| entry.map(|d| d.file_name().to_string_lossy().into_owned()))
                     .collect::<Result<Vec<_>, _>>()
             })
-            .unwrap_or(Vec::new())
+            .unwrap_or_default()
             .into_iter()
             .filter(|entry| entry.ends_with(".obj"))
             .map(|file| file.trim_end_matches(".obj").to_owned())
