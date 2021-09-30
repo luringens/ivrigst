@@ -16,6 +16,10 @@ use texture_tester::TextureTester;
 use crate::{model::Model, resources::Resources, ui::UI};
 
 #[cfg(debug_assertions)]
+#[cfg(target_os = "linux")]
+const ASSETS_PATH: &str = "../../assets";
+#[cfg(debug_assertions)]
+#[cfg(not(target_os = "linux"))]
 const ASSETS_PATH: &str = "..\\..\\assets";
 #[cfg(not(debug_assertions))]
 const ASSETS_PATH: &str = "assets";
@@ -23,7 +27,7 @@ const DEFAULT_MODEL_PATH: &str = "model.obj";
 
 fn main() {
     let res =
-        Resources::from_relative_exe_path(Path::new(ASSETS_PATH)).expect("Failed to find assets");
+        Resources::from_relative_exe_path(Path::new(&ASSETS_PATH)).expect("Failed to find assets");
 
     let sdl = sdl2::init().unwrap();
     let video_subsystem = sdl.video().unwrap();

@@ -1,6 +1,5 @@
 use anyhow::{anyhow, Context, Result};
-use notify::{watcher, RecursiveMode, Watcher};
-use notify::{DebouncedEvent, ReadDirectoryChangesWatcher};
+use notify::{watcher, DebouncedEvent, INotifyWatcher, RecursiveMode, Watcher};
 use std::sync::mpsc::{channel, Receiver};
 use std::time::Duration;
 use std::{
@@ -11,7 +10,7 @@ use std::{
 
 pub struct Resources {
     root_path: PathBuf,
-    _watcher: ReadDirectoryChangesWatcher,
+    _watcher: INotifyWatcher,
     rx: Receiver<DebouncedEvent>,
 }
 
