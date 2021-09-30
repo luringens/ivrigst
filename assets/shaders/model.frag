@@ -119,7 +119,7 @@ float hatchingCalculation()
     vec3 projCoords = vec3(0);
     projCoords.xy = hatchpos.xy / hatchpos.w * 0.5 + 0.5;
     projCoords.z = hatchpos.z / hatching_far_plane;
-    projCoords.z -= 0.01;
+    projCoords.z -= 0.002;
     float sample_depth = texture(hatchingtexture, projCoords).r;
 
     if (sample_depth < 0.5) {
