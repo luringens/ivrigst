@@ -21,17 +21,17 @@ pub struct UiActions {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Preset {
-    HatchedMix,
-    ToonPseudoChromaDepth,
-    ShadowPhongAerial,
+    Aerial,
+    ChromaDepth,
+    Plain,
 }
 
 impl Preset {
     pub fn description(&self) -> &'static str {
         match self {
-            Preset::HatchedMix => "Mixed shading and hatching",
-            Preset::ToonPseudoChromaDepth => "Toon shading, hatching, and Pseudochroma depth",
-            Preset::ShadowPhongAerial => "Phong shading, shadows, and aerial distance",
+            Preset::Plain => "Plain",
+            Preset::Aerial => "Aerial",
+            Preset::ChromaDepth => "Colored depth",
         }
     }
 }
@@ -45,7 +45,7 @@ impl std::fmt::Display for Preset {
 impl UI {
     pub fn new(res: &Resources) -> Result<Self> {
         let renderer = UIRenderer::new(res)?;
-        let preset = Preset::HatchedMix;
+        let preset = Preset::Plain;
         let model_files = res.list_models();
         Ok(Self {
             renderer,
@@ -84,19 +84,22 @@ impl UI {
                 if let Some(model) = model {
                     let mut attr = model.get_attributes().clone();
 
-                    if ui.button(Preset::HatchedMix.description()).clicked() {
-                        self.preset = Preset::HatchedMix;
-                        attr = self.apply_preset(model);
-                    } else if ui
-                        .button(Preset::ToonPseudoChromaDepth.description())
-                        .clicked()
-                    {
-                        self.preset = Preset::ToonPseudoChromaDepth;
-                        attr = self.apply_preset(model);
-                    } else if ui.button(Preset::ShadowPhongAerial.description()).clicked() {
-                        self.preset = Preset::ShadowPhongAerial;
-                        attr = self.apply_preset(model);
-                    }
+                    ui.label("Choose visualization preset:");
+
+                    ui.horizontal(|ui| {
+                        if ui.button(Preset::Plain.description()).clicked() {
+                            self.preset = Preset::Plain;
+                            attr = self.apply_preset(model);
+                        }
+                        if ui.button(Preset::Aerial.description()).clicked() {
+                            self.preset = Preset::Aerial;
+                            attr = self.apply_preset(model);
+                        }
+                        if ui.button(Preset::ChromaDepth.description()).clicked() {
+                            self.preset = Preset::ChromaDepth;
+                            attr = self.apply_preset(model);
+                        }
+                    });
 
                     ui.collapsing("Advanced", |ui| {
                         egui::Grid::new("settings_grid")
@@ -149,14 +152,11 @@ impl UI {
                                 ui.end_row();
 
                                 ui.label("Distance shading power");
-                                ui.scope(|ui| {
-                                    ui.set_enabled(attr.distance_shading_channel != DSC::Hue);
-                                    ui.add(egui::Slider::new(
-                                        &mut attr.distance_shading_power,
-                                        0.0..=1.0,
-                                    ))
-                                    .on_disabled_hover_text("Not used when channel is set to Hue.");
-                                });
+                                ui.add(egui::Slider::new(
+                                    &mut attr.distance_shading_power,
+                                    0.0..=1.0,
+                                ));
+
                                 ui.end_row();
 
                                 ui.label("Display shader buffers");
@@ -264,8 +264,8 @@ impl UI {
     pub fn apply_preset(&self, model: &mut crate::Model) -> Attributes {
         let mut preset = model.get_attributes().clone();
         match self.preset {
-            Preset::HatchedMix => {
-                preset.toon_factor = 0.5;
+            Preset::Plain => {
+                preset.toon_factor = 0.0;
                 preset.vertex_color_mix = 1.0;
                 preset.distance_shading_channel = DistanceShadingChannel::None;
 
@@ -275,10 +275,11 @@ impl UI {
                 preset.hatching_frequency = 4;
                 preset.hatching_intensity = 0.75;
             }
-            Preset::ToonPseudoChromaDepth => {
-                preset.toon_factor = 0.7;
-                preset.vertex_color_mix = 0.0;
-                preset.distance_shading_channel = DistanceShadingChannel::Hue;
+            Preset::Aerial => {
+                preset.toon_factor = 0.0;
+                preset.vertex_color_mix = 1.0;
+                preset.distance_shading_channel = DistanceShadingChannel::Saturation;
+                preset.distance_shading_power = 0.6;
 
                 preset.replace_shadows_with_hatching = true;
                 preset.hatching_depth = 0.75;
@@ -286,17 +287,16 @@ impl UI {
                 preset.hatching_frequency = 4;
                 preset.hatching_intensity = 0.75;
             }
-            Preset::ShadowPhongAerial => {
-                preset.toon_factor = 0.3;
-                preset.vertex_color_mix = 1.0;
-                preset.distance_shading_power = 0.4;
-                preset.distance_shading_channel = DistanceShadingChannel::Saturation;
+            Preset::ChromaDepth => {
+                preset.toon_factor = 0.0;
+                preset.distance_shading_channel = DistanceShadingChannel::Hue;
+                preset.distance_shading_power = 0.6;
 
-                preset.replace_shadows_with_hatching = false;
-                preset.shadow_intensity = 0.6;
-                preset.shadows_follow = true;
-                preset.shadows_orbit_radius = 10.0;
-                preset.vertex_color_mix = 1.0;
+                preset.replace_shadows_with_hatching = true;
+                preset.hatching_depth = 0.75;
+                preset.hatching_steps = 150;
+                preset.hatching_frequency = 4;
+                preset.hatching_intensity = 0.75;
             }
         };
         model.set_attributes(preset.clone());

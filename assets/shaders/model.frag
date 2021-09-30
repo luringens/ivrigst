@@ -200,8 +200,6 @@ void main() {
     float far_plane = length(camera_position - distance_shading_furthest);
 
     float power = distance_shading_power;
-
-    // For the Hue channel, it does not make sense to restrict available colour space.
     if (distance_shading_channel == DSC_HUE) {
         power = 1.0;
     }
@@ -214,7 +212,12 @@ void main() {
 
     // Perform shading on channel of choice.
     if (distance_shading_channel == DSC_HUE) {
-        color.x = d;
+        float hue_min = 220.0;
+        float hue_max = 360.0;
+        float low = hue_min / 360.0;
+        float space = (hue_max - hue_min) / 360.0;
+        color.x = low + space * d;
+        color.y = distance_shading_power;
     }
     else if (distance_shading_channel == DSC_SATURATION) {
         // Increase base saturation before scaling it.

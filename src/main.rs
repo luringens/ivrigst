@@ -244,8 +244,8 @@ fn main() {
             let mut path = ui_actions.file_to_load.clone();
             path.push_str(".obj");
             if let Ok(mut new_model) = Model::new(&res, &path) {
-                ui.apply_preset(&mut new_model);
                 camera.set_dist(new_model.get_size().magnitude() * 1.2);
+                ui.apply_preset(&mut new_model);
                 model = Some(new_model);
                 mvp_needs_update = true;
                 current_model_file = ui_actions.file_to_load.clone();
