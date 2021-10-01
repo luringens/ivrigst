@@ -18,7 +18,7 @@ env:
   TOOLCHAIN_PROFILE: minimal
 
 jobs:
-  test:
+  test-linux:
     name: Run cargo test
     runs-on: ubuntu-latest
     steps:
@@ -39,6 +39,26 @@ jobs:
           sudo apt-get update
           sudo apt-get install --allow-unauthenticated -y -qq \
             libxcb-shape0-dev libxcb-xfixes0-dev
+      - name: Run cargo test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+  test-windows:
+    name: Run cargo test
+    runs-on: windows-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+      - name: Load cache
+        uses: Swatinem/rust-cache@v1
+        with:
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: ${{ env.TOOLCHAIN_PROFILE }}
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          override: true
       - name: Run cargo test
         uses: actions-rs/cargo@v1
         with:
