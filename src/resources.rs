@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Context, Result};
-use notify::{watcher, DebouncedEvent, INotifyWatcher, RecursiveMode, Watcher};
+use notify::{watcher, DebouncedEvent, RecursiveMode, Watcher};
 use std::sync::mpsc::{channel, Receiver};
 use std::time::Duration;
 use std::{
@@ -10,7 +10,7 @@ use std::{
 
 pub struct Resources {
     root_path: PathBuf,
-    _watcher: INotifyWatcher,
+    _watcher: notify::RecommendedWatcher,
     rx: Receiver<DebouncedEvent>,
 }
 
