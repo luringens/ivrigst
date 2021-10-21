@@ -2,8 +2,7 @@
 name = "rmedvis"
 version = "0.1.0"
 authors = ["Stian Soltvedt <stian@soltvedt.info>"]
-edition = "2018"
-resolver = "2"
+edition = "2021"
 license = "GPL-3.0-only"
 readme = "README.md"
 repository = "https://github.com/stisol/rmedvis/"
