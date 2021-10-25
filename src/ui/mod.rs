@@ -1,3 +1,5 @@
+//! This module contains UI-related code.
+
 mod render;
 mod sdl2_egui_translation;
 mod ui_builder;

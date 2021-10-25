@@ -1,13 +1,17 @@
+//! Module containing the [Shader] and [Program] structs.
+
 use crate::resources::Resources;
 use anyhow::{anyhow, Context, Result};
 use nalgebra as na;
 use std::ffi::{CStr, CString};
 
+/// Struct representing a compiled shader program.
 pub struct Program {
     id: gl::types::GLuint,
 }
 
 impl Program {
+    /// Attempt to compile a shader program with the given name.
     pub fn from_res(res: &Resources, name: &str) -> Result<Program> {
         const POSSIBLE_EXT: [&str; 2] = [".vert", ".frag"];
 
@@ -19,6 +23,7 @@ impl Program {
         Program::from_shaders(&shaders[..])
     }
 
+    /// Attempt to compile a program with the given compiled shaders.
     pub fn from_shaders(shaders: &[Shader]) -> Result<Program> {
         let program_id = unsafe { gl::CreateProgram() };
 
@@ -130,11 +135,13 @@ impl Drop for Program {
     }
 }
 
+/// Struct representing a single compiled shader file.
 pub struct Shader {
     id: gl::types::GLuint,
 }
 
 impl Shader {
+    /// Attempts to compile a shader file by filename.
     pub fn from_res(res: &Resources, name: &str) -> Result<Shader> {
         const POSSIBLE_EXT: [(&str, gl::types::GLenum); 2] =
             [(".vert", gl::VERTEX_SHADER), (".frag", gl::FRAGMENT_SHADER)];
@@ -155,15 +162,18 @@ impl Shader {
         Shader::from_source(&source, shader_kind)
     }
 
+    /// Attempts to compile a shader by source code string.
     pub fn from_source(source: &CStr, kind: gl::types::GLenum) -> Result<Shader> {
         let id = shader_from_source(source, kind)?;
         Ok(Shader { id })
     }
 
+    /// Attempts to compile a vertex shader by source code string.
     pub fn from_vert_source(source: &CStr) -> Result<Shader> {
         Shader::from_source(source, gl::VERTEX_SHADER)
     }
 
+    /// Attempts to compile a fragment shader by source code string.
     pub fn from_frag_source(source: &CStr) -> Result<Shader> {
         Shader::from_source(source, gl::FRAGMENT_SHADER)
     }
@@ -181,6 +191,7 @@ impl Drop for Shader {
     }
 }
 
+/// Attempts to compile a vertex- or fragment shader string.
 fn shader_from_source(source: &CStr, kind: gl::types::GLenum) -> Result<gl::types::GLuint> {
     let id = unsafe { gl::CreateShader(kind) };
     unsafe {
@@ -216,6 +227,7 @@ fn shader_from_source(source: &CStr, kind: gl::types::GLenum) -> Result<gl::type
     Ok(id)
 }
 
+/// Helper function for initializing [CString]s.
 fn create_whitespace_cstring_with_len(len: usize) -> CString {
     // allocate buffer of correct size
     let mut buffer: Vec<u8> = Vec::with_capacity(len + 1);

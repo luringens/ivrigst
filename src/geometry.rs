@@ -1,3 +1,5 @@
+//! Geometry module containing helper functions for calculating some intersections.
+
 use na::Vector3;
 use nalgebra as na;
 
@@ -36,8 +38,8 @@ pub fn intersect_box_and_line(line_dir: Vector3<f32>, box_size: Vector3<f32>) ->
     [intersections[0], intersections[1]]
 }
 
-/// Written with reference to
-/// https://rosettacode.org/wiki/Find_the_intersection_of_a_line_with_a_plane#Rust
+/// Finds the intersection between a plane and a line. Written with reference to
+/// [Rosetta Code](https://rosettacode.org/wiki/Find_the_intersection_of_a_line_with_a_plane#Rust)
 pub fn intersect_plane_and_line(
     ray_vector: Vector3<f32>,
     plane_point: Vector3<f32>,

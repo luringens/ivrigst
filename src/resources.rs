@@ -1,3 +1,5 @@
+//! This module contains the [Resources] struct, which finds and watches the resources directory
+//! containing models and shaders and provides functions to easily parse them into memory.
 use anyhow::{anyhow, Context, Result};
 use notify::{watcher, DebouncedEvent, RecursiveMode, Watcher};
 use std::sync::mpsc::{channel, Receiver};
@@ -8,6 +10,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+/// Find and watches the resources directory containing models and shaders.
 pub struct Resources {
     root_path: PathBuf,
     _watcher: notify::RecommendedWatcher,
@@ -15,6 +18,8 @@ pub struct Resources {
 }
 
 impl Resources {
+    /// Initializes a [Resources] struct, attempting to find the resources directory and beginning
+    /// to watch for file changes.
     pub fn from_relative_exe_path(rel_path: &Path) -> Result<Resources> {
         let exe_file_name = ::std::env::current_exe().context("No exe filename")?;
         let exe_path = exe_file_name.parent().context("No exe parent")?;
@@ -31,6 +36,7 @@ impl Resources {
         })
     }
 
+    /// Lists all changed files since last check.
     pub fn updated_paths(&self) -> Vec<PathBuf> {
         let mut events = Vec::new();
         match self.rx.try_recv() {
@@ -42,6 +48,7 @@ impl Resources {
         events
     }
 
+    /// Attempts to load the given text file.
     pub fn load_cstring(&self, resource_name: &str) -> Result<ffi::CString> {
         let mut file = fs::File::open(resource_name_to_path(&self.root_path, resource_name))
             .context("Failed to open resource file")?;
@@ -58,6 +65,7 @@ impl Resources {
         Ok(unsafe { ffi::CString::from_vec_unchecked(buffer) })
     }
 
+    /// Attempts to load the given obj file.
     pub fn load_model(&self, resource_name: &str) -> Result<tobj::Mesh> {
         let path = resource_name_to_path(&self.root_path, resource_name);
         let settings = tobj::LoadOptions {
@@ -73,6 +81,7 @@ impl Resources {
         Ok(model.mesh)
     }
 
+    /// Lists all models found in the root resource directory.
     pub fn list_models(&self) -> Vec<String> {
         std::fs::read_dir(&self.root_path)
             .and_then(|readdir| {
@@ -88,6 +97,7 @@ impl Resources {
     }
 }
 
+/// Joins a location string to a root directory path.
 fn resource_name_to_path(root_dir: &Path, location: &str) -> PathBuf {
     let mut path: PathBuf = root_dir.into();
 

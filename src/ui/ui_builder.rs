@@ -1,3 +1,5 @@
+//! Contains the UI construction and interaction code.
+
 use crate::{
     model::{Attributes, DistanceShadingChannel},
     resources::Resources,
@@ -8,17 +10,20 @@ use nalgebra as na;
 
 use super::UIRenderer;
 
+/// Main struct for handling the user interface.
 pub struct UI {
     pub renderer: UIRenderer,
     preset: Preset,
     model_files: Vec<String>,
 }
 
+/// Describes actions the UI wishes the backend to execute.
 pub struct UiActions {
     pub show_debug: bool,
     pub file_to_load: String,
 }
 
+/// Describes visualization presets.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Preset {
     Aerial,
@@ -43,6 +48,7 @@ impl std::fmt::Display for Preset {
 }
 
 impl UI {
+    /// Initialize the user interface and it's rendering code.
     pub fn new(res: &Resources) -> Result<Self> {
         let renderer = UIRenderer::new(res)?;
         let preset = Preset::Plain;
@@ -54,6 +60,7 @@ impl UI {
         })
     }
 
+    /// Builds the immediate-mode user interface.
     pub fn build_ui(
         &mut self,
         ctx: &egui::CtxRef,
@@ -261,6 +268,7 @@ impl UI {
             });
     }
 
+    /// Applies a preset to model renderer.
     pub fn apply_preset(&self, model: &mut crate::Model) -> Attributes {
         let mut preset = model.get_attributes().clone();
         match self.preset {
@@ -303,6 +311,7 @@ impl UI {
         preset
     }
 
+    /// Handles [egui] output such as changing cursor icon, clipboard actions or opening a link.
     pub fn handle_output(&self, output: egui::Output) -> Result<sdl2::mouse::Cursor> {
         let system_cursor = egui_to_sdl2_cursor(output.cursor_icon);
         let cursor = sdl2::mouse::Cursor::from_system(system_cursor).map_err(|e| anyhow!(e))?;

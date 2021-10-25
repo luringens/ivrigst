@@ -1,3 +1,5 @@
+//! Module containing the [UIRenderer] struct and its related [Vertex] struct.
+
 use crate::{
     render_gl::{
         self, buffer,
@@ -9,7 +11,7 @@ use anyhow::Result;
 use render_gl_derive::VertexAttribPointers;
 
 const SHADER_PATH: &str = "shaders/egui";
-const SHADER_NAME: &str = "egui";
+const _SHADER_NAME: &str = "egui";
 const TEXTURE_UNIT: gl::types::GLenum = gl::TEXTURE0;
 
 #[derive(Copy, Clone, Debug, VertexAttribPointers)]
@@ -39,6 +41,7 @@ impl From<&egui::epaint::Vertex> for Vertex {
     }
 }
 
+/// The struct that does the rendering work of passing [egui]'s vertices to the GPU.
 pub struct UIRenderer {
     ibo: buffer::ElementArrayBuffer,
     program: render_gl::Program,
@@ -48,6 +51,7 @@ pub struct UIRenderer {
 }
 
 impl UIRenderer {
+    /// Initializes [UIRenderer], compiling shaders and initializing buffers.
     pub fn new(res: &Resources) -> Result<Self> {
         // set up shader program
         let program = render_gl::Program::from_res(res, SHADER_PATH)?;
@@ -80,6 +84,7 @@ impl UIRenderer {
         })
     }
 
+    /// Uploads [egui::Texture] to the GPU.
     pub fn set_texture(&self, width: i32, height: i32, texture: &egui::Texture) {
         let pixels: Vec<u8> = texture
             .pixels
@@ -97,6 +102,7 @@ impl UIRenderer {
         );
     }
 
+    /// Renders `egui`'s vertices.
     pub fn render(
         &self,
         vertices: &[egui::epaint::Vertex],
@@ -146,18 +152,5 @@ impl UIRenderer {
         self.ibo.unbind();
         self.vao.unbind();
         self.vbo.unbind();
-    }
-
-    pub fn check_shader_update(&mut self, path: &std::path::Path, res: &Resources) {
-        let path = path.file_stem().map(|p| p.to_string_lossy().to_string());
-        if path == Some(SHADER_NAME.to_string()) {
-            match render_gl::Program::from_res(res, SHADER_PATH) {
-                Ok(program) => {
-                    self.program.unset_used();
-                    self.program = program
-                }
-                Err(e) => eprintln!("Shader reload error: {}", e),
-            }
-        }
     }
 }

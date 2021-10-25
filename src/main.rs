@@ -1,3 +1,4 @@
+#![doc = include_str!("../README.md")]
 #![allow(clippy::missing_safety_doc)]
 
 mod camera;
@@ -59,7 +60,6 @@ fn main() {
         render_gl::Viewport::for_window(window.size().0 as i32, window.size().1 as i32);
     viewport.set_used();
     let color_buffer = render_gl::ColorBuffer::from_color(na::Vector3::new(0.3, 0.3, 0.5));
-    color_buffer.set_used();
 
     // Camera and projection
     let model_isometry = na::Isometry3::new(na::Vector3::zeros(), na::zero());
@@ -206,6 +206,7 @@ fn main() {
             mvp_needs_update = false;
         }
 
+        // Render the model
         if let Some(model) = model.as_mut() {
             let elapsed = time.elapsed();
             let mut attr = model.get_attributes().clone();
@@ -230,6 +231,7 @@ fn main() {
                 .render(&mesh.vertices, &mesh.indices, clip_rect, viewport.size());
         }
 
+        // Render debug textures if chosen
         if let Some(model) = model.as_mut() {
             if ui_actions.show_debug {
                 texture_tester.render(
@@ -240,6 +242,7 @@ fn main() {
             }
         }
 
+        // Check if model should be reloaded
         if ui_actions.file_to_load != current_model_file {
             let mut path = ui_actions.file_to_load.clone();
             path.push_str(".obj");
@@ -258,7 +261,6 @@ fn main() {
         // Update shaders if needed
         for path in res.updated_paths() {
             eprintln!("Path updated: {}", path.to_string_lossy());
-            ui.renderer.check_shader_update(&path, &res);
             if let Some(model) = model.as_mut() {
                 model.check_shader_update(&path, &res);
             }

@@ -1,3 +1,5 @@
+//! Module containing the [TextureTester] struct and its related [Vertex] struct.
+
 use crate::{
     render_gl::{
         self,
@@ -15,13 +17,15 @@ const SHADER_NAME: &str = "texture_tester";
 
 #[derive(Copy, Clone, Debug, VertexAttribPointers)]
 #[repr(C, packed)]
-pub struct Vertex {
+struct Vertex {
     #[location = 0]
     pub pos: data::f32_f32,
     #[location = 1]
     pub uv: data::f32_f32,
 }
 
+/// Renders textures to corners of the viewport. This is used to debug
+/// intermediate render passes for shadows and hatching.
 pub struct TextureTester {
     program: render_gl::Program,
     vao1: buffer::VertexArray,
@@ -33,8 +37,9 @@ pub struct TextureTester {
 }
 
 impl TextureTester {
+    /// Set up TextureTester, compiling shaders and initializing buffers.
     pub fn new(res: &Resources) -> Result<Self> {
-        // set up shader program
+        // Compile shader program
         let program = render_gl::Program::from_res(res, SHADER_PATH)?;
 
         let vertices1: Vec<Vertex> = vec![
@@ -55,6 +60,7 @@ impl TextureTester {
                 uv: f32_f32::from((1.0, 1.0)),
             },
         ];
+
         let vertices2: Vec<Vertex> = vec![
             Vertex {
                 pos: f32_f32::from((0.5, -0.49)),
@@ -74,6 +80,7 @@ impl TextureTester {
             },
         ];
 
+        // Build array buffers
         let vbo1 = buffer::ArrayBuffer::new();
         vbo1.bind();
         vbo1.static_draw_data(&vertices1);
@@ -90,7 +97,7 @@ impl TextureTester {
         Vertex::vertex_attrib_pointers();
         vbo2.unbind();
 
-        // indices buffer
+        // Build indice buffer
         let indices: Vec<u32> = vec![0, 1, 2, 1, 2, 3];
         let ibo = buffer::ElementArrayBuffer::new();
         ibo.bind();
@@ -109,6 +116,7 @@ impl TextureTester {
         Ok(value)
     }
 
+    /// Render the given textures to the viewport.
     pub fn render(&self, viewport: &Viewport, texture1: &Texture, texture2: &Texture) {
         self.program.set_used();
         viewport.set_used();
@@ -144,6 +152,7 @@ impl TextureTester {
         self.ibo.unbind();
     }
 
+    /// Check if the shader has been updated.
     pub fn check_shader_update(&mut self, path: &std::path::Path, res: &Resources) -> bool {
         let path = path.file_stem().map(|p| p.to_string_lossy().to_string());
         if path == Some(SHADER_NAME.to_string()) {

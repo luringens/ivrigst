@@ -1,3 +1,5 @@
+//! Contains boilerplate for common vertex attribute functions.
+
 #[allow(non_camel_case_types)]
 #[derive(Copy, Clone, Debug)]
 #[repr(C, packed)]

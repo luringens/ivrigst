@@ -1,3 +1,7 @@
+//! This module contains [Model], which is where the main logic for the mesh rendering happens.
+//! Ideally, shadow- and hatching texture rendering should be refactored to it's own module in the
+//! future.
+
 use crate::{
     geometry::intersect_box_and_line,
     render_gl::{
@@ -35,6 +39,7 @@ pub struct Vertex {
     pub color: data::f32_f32_f32,
 }
 
+/// Represents which color channel the distance shading shader should use.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
 pub enum DistanceShadingChannel {
@@ -61,6 +66,7 @@ impl std::fmt::Display for DistanceShadingChannel {
     }
 }
 
+/// Represents shader attributes in use.
 #[derive(Debug, Clone)]
 pub struct Attributes {
     pub projection_matrix: na::Matrix4<f32>,
@@ -108,6 +114,8 @@ impl Default for Attributes {
     }
 }
 
+/// [Model] is where the main logic for the mesh rendering happens. Ideally, shadow- and hatching
+/// texture rendering should be refactored to it's own module in the future.
 pub struct Model {
     program: render_gl::Program,
     shadow_program: render_gl::Program,
@@ -125,6 +133,7 @@ pub struct Model {
 }
 
 impl Model {
+    /// Set up [Model], compiling shaders, initializing buffers, and parsing a model.
     pub fn new(res: &Resources, filename: &str) -> Result<Self> {
         // set up shader program
         let program = render_gl::Program::from_res(res, MAIN_SHADER_PATH)?;
@@ -238,21 +247,27 @@ impl Model {
         Ok(value)
     }
 
+    /// Get the shader attributes.
     pub fn get_attributes(&self) -> &Attributes {
         &self.attributes
     }
 
+    /// Get the hatching texture.
     pub fn get_hatch_texture(&self) -> &Texture {
         &self.hatch_map
     }
 
+    /// Get the shadow texture.
     pub fn get_shadow_texture(&self) -> &Texture {
         &self.depth_map
     }
 
+    /// Compares given [Attributes] struct to the currently applied attributes and updated any
+    /// changed values in the shader.
     pub fn set_attributes(&mut self, new: Attributes) {
         let old = &self.attributes;
         self.program.set_used();
+        // Safety: data passed to buffers must be of appropriate type and size.
         unsafe {
             if new.projection_matrix != old.projection_matrix {
                 self.program
@@ -312,9 +327,11 @@ impl Model {
         self.attributes = new;
     }
 
+    /// Resets all shader attributes to the defaults.
     pub fn reset_all_attributes(&self) {
         self.program.set_used();
         let att = &self.attributes;
+        // Safety: data passed to buffers must be of appropriate type and size.
         unsafe {
             self.program
                 .set_uniform_matrix4("projection_matrix", &att.projection_matrix);
@@ -346,11 +363,16 @@ impl Model {
         self.program.unset_used();
     }
 
+    /// Gets the bounding box size of the loaded model.
     pub fn get_size(&self) -> &na::Vector3<f32> {
         &self.size
     }
 
+    /// The main rendering function for the program.
     pub fn render(&self, viewport: &Viewport) {
+        // Safety: This is a non-stop stream of OpenGL calls. Ultimately, without a safe wrappe
+        // around OpenGL (which even `glium` eventually had to give up on), this will likely never
+        // be entirely safe.
         unsafe {
             let (light_vector, light_space_matrix) = self.render_shadowmap();
             let hatch_space_matrix = self.render_hatchmap(viewport);
@@ -415,6 +437,12 @@ impl Model {
         self.vao.unbind();
     }
 
+    /// Renders the shadowmap to the shadows framebuffer.
+    ///
+    /// ### Safety
+    ///
+    /// Requires buffers and data in the struct to be appropriately set.
+    /// This function should only be called from [Model::render].
     unsafe fn render_shadowmap(&self) -> (na::OPoint<f32, na::Const<3>>, na::Matrix4<f32>) {
         gl::Disable(gl::CULL_FACE);
         gl::Disable(gl::BLEND);
@@ -464,6 +492,12 @@ impl Model {
         (light_vector, light_space_matrix)
     }
 
+    /// Renders the hatchmap to the hatching framebuffer.
+    ///
+    /// ### Safety
+    ///
+    /// Requires buffers and data in the struct to be appropriately set.
+    /// This function should only be called from [Model::render].
     unsafe fn render_hatchmap(&self, viewport: &Viewport) -> na::Matrix4<f32> {
         self.hatching_program.set_used();
         self.hatching_program
@@ -512,6 +546,7 @@ impl Model {
         hatch_space_matrix
     }
 
+    /// Check if any of the shaders have been updated.
     pub fn check_shader_update(&mut self, path: &std::path::Path, res: &Resources) -> bool {
         let path = path.file_stem().map(|p| p.to_string_lossy().to_string());
         if path == Some(MAIN_SHADER_NAME.to_string()) {

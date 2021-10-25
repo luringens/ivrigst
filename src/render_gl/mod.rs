@@ -1,3 +1,5 @@
+//! Module containing various code wrapping or working with OpenGL functions.
+
 pub mod buffer;
 mod color_buffer;
 pub mod data;
@@ -31,6 +33,7 @@ pub fn check_gl_error() {
     }
 }
 
+/// Converts some common OpenGL error IDs to a more helpful error string.
 fn get_gl_error_string(error_id: u32) -> &'static str {
     match error_id {
         gl::NO_ERROR => "No error?",

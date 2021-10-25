@@ -1,3 +1,4 @@
+/// This module contains a collection of functions translating events and keycodes between SDL2 and [egui].
 use egui::Key;
 use sdl2::{
     keyboard::{Keycode, Mod},
