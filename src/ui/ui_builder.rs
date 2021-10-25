@@ -21,6 +21,7 @@ pub struct UI {
 pub struct UiActions {
     pub show_debug: bool,
     pub file_to_load: String,
+    pub clear_color: na::Vector3<f32>,
 }
 
 /// Describes visualization presets.
@@ -113,7 +114,17 @@ impl UI {
                             .striped(true)
                             .spacing([40.0, 4.0])
                             .show(ui, |ui| {
-                                // Colour widget.
+                                // Colour widgets.
+                                ui.label("Background colour");
+                                let mut color = [
+                                    ui_actions.clear_color[0],
+                                    ui_actions.clear_color[1],
+                                    ui_actions.clear_color[2],
+                                ];
+                                ui.color_edit_button_rgb(&mut color);
+                                ui_actions.clear_color = na::Vector3::from(color);
+                                ui.end_row();
+
                                 ui.label("Model base colour");
                                 let mut color = [attr.color[0], attr.color[1], attr.color[2]];
                                 ui.color_edit_button_rgb(&mut color);

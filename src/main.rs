@@ -59,7 +59,7 @@ fn main() {
     let mut viewport =
         render_gl::Viewport::for_window(window.size().0 as i32, window.size().1 as i32);
     viewport.set_used();
-    let color_buffer = render_gl::ColorBuffer::from_color(na::Vector3::new(0.3, 0.3, 0.5));
+    let mut color_buffer = render_gl::ColorBuffer::from_color(na::Vector3::new(0.3, 0.3, 0.5));
 
     // Camera and projection
     let model_isometry = na::Isometry3::new(na::Vector3::zeros(), na::zero());
@@ -87,6 +87,7 @@ fn main() {
     let mut ui_actions = ui::UiActions {
         show_debug: false,
         file_to_load: current_model_file.clone(),
+        clear_color: color_buffer.color.xyz(),
     };
 
     let mut event_pump = sdl.event_pump().unwrap();
@@ -255,6 +256,10 @@ fn main() {
             }
         }
 
+        // Check the if clear color needs updating
+        if ui_actions.clear_color != color_buffer.color.xyz() {
+            color_buffer.update_color(ui_actions.clear_color);
+        }
         window.gl_swap_window();
         render_gl::check_gl_error();
 
