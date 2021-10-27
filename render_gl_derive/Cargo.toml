@@ -4,8 +4,8 @@ version = "0.1.0"
 authors = []
 
 [dependencies]
-quote = "0.3"
-syn = "0.11"
+quote = "1.0.10"
+syn = "1.0.81"
 
 [lib]
 proc-macro = true
