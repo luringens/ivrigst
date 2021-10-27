@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = []
 
 [dependencies]
-quote = "0.3"
+quote = "0.6"
 syn = "0.11"
 
 [lib]
