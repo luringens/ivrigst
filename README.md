@@ -4,7 +4,7 @@
   <img src="https://github.com/stisol/rmedvis/actions/workflows/main.yml/badge.svg"/>
 </a>
 
-RMedVis is a medical visualization tool for rendering blood vessel meshes for research purposes, written in Rust and licensed under GPL3.
+RMedVis is a medical visualization tool for rendering blood vessel meshes for research purposes, written in Rust and licensed under the Mozilla Public License.
 
 ![Demonstration image](demo.png)
 
