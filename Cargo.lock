@@ -267,6 +267,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "ivrigst"
+version = "1.0.0"
+dependencies = [
+ "anyhow",
+ "clipboard",
+ "egui",
+ "gl",
+ "nalgebra",
+ "notify",
+ "render_gl_derive",
+ "sdl2",
+ "tobj",
+ "walkdir",
+ "webbrowser",
+]
+
+[[package]]
 name = "js-sys"
 version = "0.3.55"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -569,23 +586,6 @@ version = "0.1.0"
 dependencies = [
  "quote",
  "syn",
-]
-
-[[package]]
-name = "rmedvis"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clipboard",
- "egui",
- "gl",
- "nalgebra",
- "notify",
- "render_gl_derive",
- "sdl2",
- "tobj",
- "walkdir",
- "webbrowser",
 ]
 
 [[package]]

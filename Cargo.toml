@@ -1,14 +1,12 @@
 [package]
-name = "rmedvis"
-version = "0.1.0"
+name = "ivrigst"
+version = "1.0.0"
 authors = ["Stian Soltvedt <stian@soltvedt.info>"]
 edition = "2021"
-license = "GPL-3.0-only"
+license-file ="LICENSE.md"
 readme = "README.md"
-repository = "https://github.com/stisol/rmedvis/"
+repository = "https://github.com/stisol/ivrigst/"
 publish = false
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 gl = "0.14.0"

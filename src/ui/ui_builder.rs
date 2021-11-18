@@ -272,7 +272,7 @@ impl UI {
 
                     ui.horizontal(|ui| {
                         ui.label("Read more at:");
-                        ui.add(egui::Hyperlink::new("https://github.com/stisol/rmedvis"));
+                        ui.add(egui::Hyperlink::new("https://github.com/stisol/ivrigst"));
                     });
                     model.set_attributes(attr);
                 }
