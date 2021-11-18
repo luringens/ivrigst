@@ -68,9 +68,16 @@ impl UI {
         model: &mut Option<crate::Model>,
         ui_actions: &mut UiActions,
     ) {
+        // Disable window shadow.
+        let shadow = egui::epaint::Shadow {
+            extrusion: 0.0,
+            ..Default::default()
+        };
+        let frame = egui::Frame::window(&egui::Style::default()).shadow(shadow);
         egui::Window::new("Settings")
             .auto_sized()
             .collapsible(true)
+            .frame(frame)
             .show(ctx, |ui| {
                 let mut selected_file = String::new();
                 if ui_actions.file_to_load.is_empty() {
