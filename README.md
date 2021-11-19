@@ -1,4 +1,4 @@
-# IVRIGST - Indirect Volume Rendering and Interactive General-purpose Shader Testing Platform
+# IVRIGST - Indirect Volume Rendering and Interactive General-purpose Shader Tool
 
 <a href="https://github.com/stisol/rmedvis/actions/workflows/main.yml">
   <img src="https://github.com/stisol/rmedvis/actions/workflows/main.yml/badge.svg"/>
