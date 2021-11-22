@@ -11,7 +11,7 @@ publish = false
 [dependencies]
 gl = "0.14.0"
 sdl2 = { version = "0.35.1", features = ["bundled", "static-link"] }
-anyhow = "1.0.47"
+anyhow = "1.0.48"
 render_gl_derive = { path = "render_gl_derive" }
 nalgebra = "0.29.0"
 tobj = "3.2.0"
