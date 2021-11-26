@@ -39,7 +39,7 @@ fn main() {
     gl_attr.set_context_version(4, 1);
 
     let window = video_subsystem
-        .window("MedVis", 1200, 800)
+        .window("IVRIGST", 1200, 800)
         .opengl()
         .resizable()
         .build()
