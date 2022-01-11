@@ -144,7 +144,10 @@ fn main() {
                 }
                 Event::MouseWheel { y, .. } => {
                     camera.mousewheel(y);
-                    raw_input.scroll_delta[1] += y as f32;
+                    raw_input.events.push(egui::Event::Scroll(egui::Vec2 {
+                        x: 0.0,
+                        y: y as f32,
+                    }));
                     mvp_needs_update = true;
                 }
                 Event::KeyDown {
@@ -216,9 +219,9 @@ fn main() {
             model.render(&viewport);
         }
 
-        // The egui texture isn't available until one frame has passed, so we've got to do it here.
+        // The egui font texture is available after a frame has passed, so we need to grab it here.
         if first_frame {
-            let texture = ctx.texture();
+            let texture = ctx.font_image();
             ui.renderer
                 .set_texture(texture.width as i32, texture.height as i32, &texture);
             first_frame = false;

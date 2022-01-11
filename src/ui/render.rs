@@ -85,7 +85,7 @@ impl UIRenderer {
     }
 
     /// Uploads [egui::Texture] to the GPU.
-    pub fn set_texture(&self, width: i32, height: i32, texture: &egui::Texture) {
+    pub fn set_texture(&self, width: i32, height: i32, texture: &egui::FontImage) {
         let pixels: Vec<u8> = texture
             .pixels
             .iter()
