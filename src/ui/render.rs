@@ -90,7 +90,7 @@ impl UIRenderer {
             .pixels
             .iter()
             .map(|&a| egui::epaint::Color32::from_white_alpha(a).to_tuple())
-            .flat_map(|(r, g, b, a)| std::array::IntoIter::new([r, g, b, a]))
+            .flat_map(|(r, g, b, a)| [r, g, b, a])
             .collect();
         self.texture.load_texture(
             (width, height),
