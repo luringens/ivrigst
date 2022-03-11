@@ -10,7 +10,7 @@ publish = false
 
 [dependencies]
 gl = "0.14.0"
-sdl2 = { version = "0.35.1", features = ["bundled", "static-link"] }
+sdl2 = { version = "0.35.2", features = ["bundled", "static-link"] }
 anyhow = "1.0.56"
 render_gl_derive = { path = "render_gl_derive" }
 nalgebra = "0.30.1"
