@@ -43,29 +43,9 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-  test-windows:
-    name: Run cargo test
-    runs-on: windows-latest
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v2
-      - name: Load cache
-        uses: Swatinem/rust-cache@v1
-        with:
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: ${{ env.TOOLCHAIN_PROFILE }}
-          toolchain: ${{ env.RUST_TOOLCHAIN }}
-          override: true
-      - name: Run cargo test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
   lints:
     name: Run cargo fmt and cargo clippy
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
