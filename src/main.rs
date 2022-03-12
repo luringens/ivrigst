@@ -77,8 +77,7 @@ fn main() {
     let mut texture_tester = TextureTester::new(&res).expect("Failed to set up texture tester.");
 
     let mut cursor: sdl2::mouse::Cursor;
-    let mut ctx = egui::CtxRef::default();
-    let mut first_frame = true;
+    let ctx = egui::Context::default();
     let mut mvp_needs_update = true;
     let mut current_model_file = match model {
         Some(_) => DEFAULT_MODEL_PATH.to_owned(),
@@ -178,11 +177,12 @@ fn main() {
         // UI handling
         ctx.begin_frame(raw_input);
         ui.build_ui(&ctx, &mut model, &mut ui_actions);
-        let (output, shapes) = ctx.end_frame();
-        let clipped_meshes: Vec<egui::ClippedMesh> = ctx.tessellate(shapes);
+        let full_output = ctx.end_frame();
+        let clipped_meshes: Vec<egui::ClippedMesh> = ctx.tessellate(full_output.shapes);
+        ui.renderer.egui_texture_delta(full_output.textures_delta);
 
         // Handle egui output - clipboard events, changing cursor, etc.
-        match ui.handle_output(output) {
+        match ui.handle_output(full_output.platform_output) {
             Ok(c) => {
                 // Unsets when dropped, so we need to store a reference to it outside the loop.
                 cursor = c;
@@ -217,14 +217,6 @@ fn main() {
             attr.elapsed = elapsed.as_millis() as f32;
             model.set_attributes(attr);
             model.render(&viewport);
-        }
-
-        // The egui font texture is available after a frame has passed, so we need to grab it here.
-        if first_frame {
-            let texture = ctx.font_image();
-            ui.renderer
-                .set_texture(texture.width as i32, texture.height as i32, &texture);
-            first_frame = false;
         }
 
         // Render the UI

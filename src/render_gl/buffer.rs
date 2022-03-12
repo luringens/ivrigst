@@ -191,6 +191,55 @@ impl Texture {
         }
     }
 
+    /// Update part of the texture. Will error out if dimensions + offset is out of bounds.
+    pub fn update_subtexture(
+        &self,
+        dimensions: (i32, i32),
+        pixels: Option<&[u8]>,
+        format: gl::types::GLenum,
+        data_type: gl::types::GLenum,
+        offset: (i32, i32),
+    ) {
+        assert!(dimensions.0 >= 0);
+        assert!(dimensions.1 >= 0);
+        assert!(offset.0 >= 0);
+        assert!(offset.1 >= 0);
+        self.bind();
+        let pixels_pointer = if let Some(pixels) = pixels {
+            // Check correct size of data and dimensions.
+            let pixel_size = match format {
+                gl::RGBA => 4,
+                _ => panic!("Unhandled pixel type."),
+            };
+            assert_eq!(
+                pixels.len(),
+                (dimensions.0 * dimensions.1) as usize * pixel_size,
+                "Inconsistent texture size!"
+            );
+
+            pixels.as_ptr() as *const std::ffi::c_void
+        } else {
+            std::ptr::null() as *const std::ffi::c_void
+        };
+
+        // Safety: this isn't. The size of the data must be correct, and yet, we're writing to
+        // an existing buffer with an offset or size that might take us out of bounds. We don't
+        // store the size of it, but hopefully the worst that'll happen is a GL_INVALID_VALUE.
+        unsafe {
+            gl::TexSubImage2D(
+                gl::TEXTURE_2D, // Target
+                0,              // Level-of-detail number. 0 for no mip-map
+                offset.0,
+                offset.1,
+                dimensions.0,
+                dimensions.1,
+                format,
+                data_type,
+                pixels_pointer,
+            );
+        }
+    }
+
     /// Sets the border color of the texture.
     pub fn set_border_color(&self, border_color: &[f32; 4]) {
         unsafe {
