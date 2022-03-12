@@ -84,22 +84,59 @@ impl UIRenderer {
         })
     }
 
+    /// Handle egui Texture updates.
+    /// NOTE: I have not yet added support for multiple egui textures. As such, this is partially
+    /// left unimplemented.
+    pub fn egui_texture_delta(&self, textures_delta: egui::TexturesDelta) {
+        // Free texture_ids no longer in use:
+        for _texture_id in textures_delta.free {
+            unimplemented!("Freeing egui textures is not currently implemented.");
+        }
+
+        if textures_delta.set.len() > 1 {
+            unimplemented!("Using multiple egui textures is not currently implemented.");
+        }
+
+        for (_texture_id, image_delta) in textures_delta.set {
+            self.apply_egui_texture_delta(image_delta);
+        }
+    }
+
     /// Uploads [egui::Texture] to the GPU.
-    pub fn set_texture(&self, width: i32, height: i32, texture: &egui::FontImage) {
-        let pixels: Vec<u8> = texture
-            .pixels
-            .iter()
-            .map(|&a| egui::epaint::Color32::from_white_alpha(a).to_tuple())
-            .flat_map(|(r, g, b, a)| [r, g, b, a])
-            .collect();
-        self.texture.load_texture(
-            (width, height),
-            Some(pixels.as_slice()),
-            gl::SRGB8_ALPHA8 as gl::types::GLint,
-            gl::RGBA,
-            gl::UNSIGNED_BYTE,
-            true,
-        );
+    fn apply_egui_texture_delta(&self, texture_delta: egui::epaint::ImageDelta) {
+        let (x, y, pixels) = match texture_delta.image {
+            egui::ImageData::Color(image) => {
+                let pixels: Vec<u8> = image
+                    .pixels
+                    .into_iter()
+                    .flat_map(|c| c.to_array())
+                    .collect();
+                (image.size[0] as i32, image.size[1] as i32, pixels)
+            }
+            egui::ImageData::Alpha(image) => {
+                let pixels: Vec<u8> = image.srgba_pixels(1.0).flat_map(|c| c.to_array()).collect();
+                (image.size[0] as i32, image.size[1] as i32, pixels)
+            }
+        };
+
+        if let Some([x_offset, y_offset]) = texture_delta.pos {
+            self.texture.update_subtexture(
+                (x, y),
+                Some(pixels.as_slice()),
+                gl::RGBA,
+                gl::UNSIGNED_BYTE,
+                (x_offset as i32, y_offset as i32),
+            );
+        } else {
+            self.texture.load_texture(
+                (x, y),
+                Some(pixels.as_slice()),
+                gl::SRGB8_ALPHA8 as gl::types::GLint,
+                gl::RGBA,
+                gl::UNSIGNED_BYTE,
+                true,
+            );
+        }
     }
 
     /// Renders `egui`'s vertices.

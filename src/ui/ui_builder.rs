@@ -64,7 +64,7 @@ impl UI {
     /// Builds the immediate-mode user interface.
     pub fn build_ui(
         &mut self,
-        ctx: &egui::CtxRef,
+        ctx: &egui::Context,
         model: &mut Option<crate::Model>,
         ui_actions: &mut UiActions,
     ) {
@@ -330,7 +330,7 @@ impl UI {
     }
 
     /// Handles [egui] output such as changing cursor icon, clipboard actions or opening a link.
-    pub fn handle_output(&self, output: egui::Output) -> Result<sdl2::mouse::Cursor> {
+    pub fn handle_output(&self, output: egui::PlatformOutput) -> Result<sdl2::mouse::Cursor> {
         let system_cursor = egui_to_sdl2_cursor(output.cursor_icon);
         let cursor = sdl2::mouse::Cursor::from_system(system_cursor).map_err(|e| anyhow!(e))?;
 
