@@ -5,7 +5,7 @@ authors = []
 
 [dependencies]
 quote = "1.0.15"
-syn = "1.0.88"
+syn = "1.0.89"
 
 [lib]
 proc-macro = true
