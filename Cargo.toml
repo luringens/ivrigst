@@ -18,7 +18,7 @@ tobj = "3.2.2"
 egui = "0.17.0"
 notify = "4.0.17"
 clipboard = "0.5"
-webbrowser = "0.6.0"
+webbrowser = "0.7.1"
 
 [build-dependencies]
 walkdir = "2.3.2"
