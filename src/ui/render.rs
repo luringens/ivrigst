@@ -113,7 +113,7 @@ impl UIRenderer {
                     .collect();
                 (image.size[0] as i32, image.size[1] as i32, pixels)
             }
-            egui::ImageData::Alpha(image) => {
+            egui::ImageData::Font(image) => {
                 let pixels: Vec<u8> = image.srgba_pixels(1.0).flat_map(|c| c.to_array()).collect();
                 (image.size[0] as i32, image.size[1] as i32, pixels)
             }
