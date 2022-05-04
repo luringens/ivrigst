@@ -178,7 +178,7 @@ fn main() {
         ctx.begin_frame(raw_input);
         ui.build_ui(&ctx, &mut model, &mut ui_actions);
         let full_output = ctx.end_frame();
-        let clipped_meshes: Vec<egui::ClippedMesh> = ctx.tessellate(full_output.shapes);
+        let clipped_primitives: Vec<egui::ClippedPrimitive> = ctx.tessellate(full_output.shapes);
         ui.renderer.egui_texture_delta(full_output.textures_delta);
 
         // Handle egui output - clipboard events, changing cursor, etc.
@@ -220,7 +220,15 @@ fn main() {
         }
 
         // Render the UI
-        for egui::ClippedMesh(clip_rect, mesh) in clipped_meshes.into_iter() {
+        for egui::ClippedPrimitive {
+            clip_rect,
+            primitive,
+        } in clipped_primitives.into_iter()
+        {
+            let mesh = match primitive {
+                egui::epaint::Primitive::Mesh(mesh) => mesh,
+                _ => panic!("Custom paint callbacks and other primitives are not supported."),
+            };
             debug_assert!(mesh.is_valid());
 
             ui.renderer
