@@ -1,11 +1,11 @@
 [package]
 name = "ivrigst"
 version = "1.0.0"
-authors = ["Stian Soltvedt <stian@soltvedt.info>"]
+authors = ["Soltvedt <luringens@protonmail.com>"]
 edition = "2021"
 license-file ="LICENSE.md"
 readme = "README.md"
-repository = "https://github.com/stisol/ivrigst/"
+repository = "https://github.com/soluri/ivrigst/"
 publish = false
 
 [dependencies]
