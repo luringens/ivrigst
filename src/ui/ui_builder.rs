@@ -335,10 +335,10 @@ impl UI {
         let cursor = sdl2::mouse::Cursor::from_system(system_cursor).map_err(|e| anyhow!(e))?;
 
         if !output.copied_text.is_empty() {
-            use clipboard::{ClipboardContext, ClipboardProvider};
-            let mut ctx: ClipboardContext =
-                ClipboardProvider::new().map_err(|_| anyhow!("Could not open clipboard."))?;
-            ctx.set_contents(output.copied_text)
+            let mut clipboard =
+                arboard::Clipboard::new().map_err(|_| anyhow!("Could not open clipboard."))?;
+            clipboard
+                .set_text(output.copied_text)
                 .map_err(|_| anyhow!("Could not set clipboard text."))?;
         }
 

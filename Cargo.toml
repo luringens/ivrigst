@@ -17,7 +17,7 @@ nalgebra = "0.31.0"
 tobj = "3.2.2"
 egui = "0.18.1"
 notify = "4.0.17"
-clipboard = "0.5"
+arboard = "2.1.1"
 webbrowser = "0.7.1"
 
 [build-dependencies]
