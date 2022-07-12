@@ -45,9 +45,8 @@ fn main() {
         .build()
         .unwrap();
 
-    let _gl_context = window.gl_create_context().unwrap();
-    let _gl =
-        gl::load_with(|s| video_subsystem.gl_get_proc_address(s) as *const std::os::raw::c_void);
+    window.gl_create_context().unwrap();
+    gl::load_with(|s| video_subsystem.gl_get_proc_address(s) as *const std::os::raw::c_void);
 
     let mut model = Model::new(&res, DEFAULT_MODEL_PATH).ok();
     let mut ui = UI::new(&res).expect("Failed to set up UI.");
