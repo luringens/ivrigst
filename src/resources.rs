@@ -1,9 +1,8 @@
 //! This module contains the [Resources] struct, which finds and watches the resources directory
 //! containing models and shaders and provides functions to easily parse them into memory.
 use anyhow::{anyhow, Context, Result};
-use notify::{watcher, DebouncedEvent, RecursiveMode, Watcher};
+use notify::{Watcher, Event, RecursiveMode};
 use std::sync::mpsc::{channel, Receiver};
-use std::time::Duration;
 use std::{
     ffi, fs,
     io::Read,
@@ -14,7 +13,7 @@ use std::{
 pub struct Resources {
     root_path: PathBuf,
     _watcher: notify::RecommendedWatcher,
-    rx: Receiver<DebouncedEvent>,
+    rx: Receiver<notify::Result<Event>>,
 }
 
 impl Resources {
@@ -26,7 +25,7 @@ impl Resources {
         let root_path = exe_path.join(rel_path);
 
         let (tx, rx) = channel();
-        let mut watcher = watcher(tx, Duration::from_millis(250))?;
+        let mut watcher = notify::recommended_watcher(tx)?;
         watcher.watch(&root_path, RecursiveMode::Recursive)?;
 
         Ok(Resources {
@@ -40,7 +39,7 @@ impl Resources {
     pub fn updated_paths(&self) -> Vec<PathBuf> {
         let mut events = Vec::new();
         match self.rx.try_recv() {
-            Ok(DebouncedEvent::Write(path)) => events.push(path),
+            Ok(Ok(Event{kind: notify::EventKind::Modify(_), mut paths, ..})) => events.append(&mut paths),
             Err(std::sync::mpsc::TryRecvError::Empty) => {}
             Err(e) => eprintln!("File watch error: {:?}", e),
             _ => {}
