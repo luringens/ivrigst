@@ -1,7 +1,7 @@
 //! This module contains the [Resources] struct, which finds and watches the resources directory
 //! containing models and shaders and provides functions to easily parse them into memory.
 use anyhow::{anyhow, Context, Result};
-use notify::{Watcher, Event, RecursiveMode};
+use notify::{Event, RecursiveMode, Watcher};
 use std::sync::mpsc::{channel, Receiver};
 use std::{
     ffi, fs,
@@ -39,7 +39,11 @@ impl Resources {
     pub fn updated_paths(&self) -> Vec<PathBuf> {
         let mut events = Vec::new();
         match self.rx.try_recv() {
-            Ok(Ok(Event{kind: notify::EventKind::Modify(_), mut paths, ..})) => events.append(&mut paths),
+            Ok(Ok(Event {
+                kind: notify::EventKind::Modify(_),
+                mut paths,
+                ..
+            })) => events.append(&mut paths),
             Err(std::sync::mpsc::TryRecvError::Empty) => {}
             Err(e) => eprintln!("File watch error: {:?}", e),
             _ => {}
