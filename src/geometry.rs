@@ -29,10 +29,7 @@ pub fn intersect_box_and_line(line_dir: Vector3<f32>, box_size: Vector3<f32>) ->
         intersections.push(intersection);
     }
 
-    intersections = intersections
-        .into_iter()
-        .filter(|&vec| vec.norm().is_finite())
-        .collect();
+    intersections.retain(|&vec| vec.norm().is_finite());
     intersections.sort_unstable_by(|&a, &b| a.norm().partial_cmp(&b.norm()).unwrap());
 
     [intersections[0], intersections[1]]
